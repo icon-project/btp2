@@ -1,0 +1,6 @@
+[submodule "javascore"]
+	path = javascore
+	url = https://github.com/icon-project/btp2-java.git
+[submodule "solidity"]
+	path = solidity
+	url = https://github.com/icon-project/btp2-solidity.git
