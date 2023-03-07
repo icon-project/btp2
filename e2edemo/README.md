@@ -10,9 +10,12 @@ In this demo, you will learn how to perform end-to-end testing between ICON and 
 
 To run the demo, the following software needs to be installed.
 
- * Node.js 18 (LTS) \[[download](https://nodejs.org/en/download/)\]
- * Docker-compose \[[download](https://docs.docker.com/compose/install/)\]
- * OpenJDK 11 or above \[[download](https://adoptium.net/)\]
+* Node.js 18 (LTS) \[[download](https://nodejs.org/en/download/)\]
+* Docker compose (V2) \[[download](https://docs.docker.com/compose/install/)\]
+* OpenJDK 11 or above \[[download](https://adoptium.net/)\]
+* jq \[[download](https://github.com/stedolan/jq)\]
+* go \[[download](https://go.dev/doc/install)\]
+
 
 ## Install required packages
 
