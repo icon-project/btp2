@@ -46,5 +46,8 @@ This is a reference `relay` implementation for BTP 2.0 protocol.
 ## E2E Testing Demo
 * Follow the instruction in [End-to-End Testing Demo](e2edemo) folder.
 
+## Repository Structure
+![repository structure](doc/img/repository_structure_v2.svg)
+
 ## References
 * [ICON BTP Standard](https://github.com/icon-project/IIPs/blob/master/IIPS/iip-25.md)
