@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"sort"
 
-	cerrors "github.com/icon-project/btp/common/errors"
+	cerrors "github.com/icon-project/btp2/common/errors"
 )
 
 type SimpleEncoder interface {

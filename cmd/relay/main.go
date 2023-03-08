@@ -27,13 +27,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/icon-project/btp/chain"
+	"github.com/icon-project/btp2/chain"
 
-	"github.com/icon-project/btp/common/cli"
-	"github.com/icon-project/btp/common/crypto"
-	"github.com/icon-project/btp/common/errors"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/wallet"
+	"github.com/icon-project/btp2/common/cli"
+	"github.com/icon-project/btp2/common/crypto"
+	"github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/log"
+	"github.com/icon-project/btp2/common/wallet"
 )
 
 var (

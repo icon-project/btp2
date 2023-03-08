@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/icon-project/btp/common/intconv"
-	"github.com/icon-project/btp/common/jsonrpc"
-	"github.com/icon-project/btp/common/types"
+	"github.com/icon-project/btp2/common/intconv"
+	"github.com/icon-project/btp2/common/jsonrpc"
+	"github.com/icon-project/btp2/common/types"
 )
 
 const (

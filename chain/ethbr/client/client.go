@@ -32,7 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/btp2/common/log"
 )
 
 const (

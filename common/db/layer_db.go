@@ -3,7 +3,7 @@ package db
 import (
 	"sync"
 
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/btp2/common/errors"
 )
 
 type layerBucket struct {

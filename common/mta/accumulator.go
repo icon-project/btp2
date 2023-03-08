@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/icon-project/btp/common"
-	"github.com/icon-project/btp/common/crypto"
-	"github.com/icon-project/btp/common/db"
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/btp2/common"
+	"github.com/icon-project/btp2/common/crypto"
+	"github.com/icon-project/btp2/common/db"
+	"github.com/icon-project/btp2/common/errors"
 )
 
 const (
@@ -507,13 +507,13 @@ func GetDepthByHeightAndAccLength(height, accLength int64) int {
 	depth := 0
 	v := accLength
 	//calculate max depth
-	for ; 0 < v ; v >>= 1 {
+	for ; 0 < v; v >>= 1 {
 		depth++
 	}
-	for ; depth > 0; {
+	for depth > 0 {
 		depth--
 		bitFlag := int64(1) << uint(depth)
-		if accLength & bitFlag == bitFlag {
+		if accLength&bitFlag == bitFlag {
 			if height < bitFlag {
 				return depth
 			}

@@ -29,8 +29,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/icon-project/btp/common/jsonrpc"
-	btpTypes "github.com/icon-project/btp/common/types"
+	"github.com/icon-project/btp2/common/jsonrpc"
+	btpTypes "github.com/icon-project/btp2/common/types"
 )
 
 const (

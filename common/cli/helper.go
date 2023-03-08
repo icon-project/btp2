@@ -42,8 +42,8 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	"github.com/icon-project/btp/common/errors"
-	"github.com/icon-project/btp/common/log"
+	"github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/log"
 )
 
 const (

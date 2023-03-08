@@ -24,11 +24,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/icon-project/btp/chain/icon/client"
-	"github.com/icon-project/btp/common/errors"
-	"github.com/icon-project/btp/common/jsonrpc"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/types"
+	"github.com/icon-project/btp2/chain/icon/client"
+	"github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/jsonrpc"
+	"github.com/icon-project/btp2/common/log"
+	"github.com/icon-project/btp2/common/types"
 )
 
 const (

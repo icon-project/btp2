@@ -19,7 +19,7 @@ package types
 import (
 	"math/big"
 
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/btp2/common/errors"
 )
 
 var BigIntOne = big.NewInt(1)

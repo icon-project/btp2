@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"reflect"
 
-	cerrors "github.com/icon-project/btp/common/errors"
-	"github.com/icon-project/btp/common/intconv"
+	cerrors "github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/intconv"
 )
 
 var rlpCodecObject rlpCodec

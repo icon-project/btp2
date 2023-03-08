@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/intconv"
+	"github.com/icon-project/btp2/common/codec"
+	"github.com/icon-project/btp2/common/intconv"
 )
 
 type HexInt struct {

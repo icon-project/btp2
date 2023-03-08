@@ -19,8 +19,8 @@ package chain
 import (
 	"encoding/json"
 
-	"github.com/icon-project/btp/common/config"
-	"github.com/icon-project/btp/common/types"
+	"github.com/icon-project/btp2/common/config"
+	"github.com/icon-project/btp2/common/types"
 )
 
 type BaseConfig struct {

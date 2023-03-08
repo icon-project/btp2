@@ -3,9 +3,9 @@ package btp2
 import (
 	"fmt"
 
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/link"
-	"github.com/icon-project/btp/common/types"
+	"github.com/icon-project/btp2/common/codec"
+	"github.com/icon-project/btp2/common/link"
+	"github.com/icon-project/btp2/common/types"
 )
 
 type BTPRelayMessage struct {

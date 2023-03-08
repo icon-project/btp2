@@ -25,13 +25,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	btpTypes "github.com/icon-project/btp/common/types"
+	btpTypes "github.com/icon-project/btp2/common/types"
 
-	"github.com/icon-project/btp/chain/ethbr/binding"
-	"github.com/icon-project/btp/chain/ethbr/client"
-	"github.com/icon-project/btp/common/errors"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/wallet"
+	"github.com/icon-project/btp2/chain/ethbr/binding"
+	"github.com/icon-project/btp2/chain/ethbr/client"
+	"github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/log"
+	"github.com/icon-project/btp2/common/wallet"
 )
 
 const (

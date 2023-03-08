@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/btp2/common/errors"
 	"github.com/sirupsen/logrus"
 )
 

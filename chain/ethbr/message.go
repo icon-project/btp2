@@ -3,10 +3,10 @@ package ethbr
 import (
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/icon-project/btp/chain/ethbr/client"
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/link"
-	"github.com/icon-project/btp/common/types"
+	"github.com/icon-project/btp2/chain/ethbr/client"
+	"github.com/icon-project/btp2/common/codec"
+	"github.com/icon-project/btp2/common/link"
+	"github.com/icon-project/btp2/common/types"
 )
 
 type relayMessageItem struct {

@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/icon-project/btp/common/codec"
+	"github.com/icon-project/btp2/common/codec"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

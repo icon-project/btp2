@@ -13,9 +13,9 @@ import (
 	"golang.org/x/crypto/scrypt"
 	"golang.org/x/crypto/sha3"
 
-	"github.com/icon-project/btp/common"
-	"github.com/icon-project/btp/common/crypto"
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/btp2/common"
+	"github.com/icon-project/btp2/common/crypto"
+	"github.com/icon-project/btp2/common/errors"
 )
 
 const (

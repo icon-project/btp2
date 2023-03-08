@@ -31,11 +31,11 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/icon-project/btp/common"
-	"github.com/icon-project/btp/common/crypto"
-	"github.com/icon-project/btp/common/jsonrpc"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/types"
+	"github.com/icon-project/btp2/common"
+	"github.com/icon-project/btp2/common/crypto"
+	"github.com/icon-project/btp2/common/jsonrpc"
+	"github.com/icon-project/btp2/common/log"
+	"github.com/icon-project/btp2/common/types"
 )
 
 const (

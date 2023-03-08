@@ -7,12 +7,12 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/icon-project/btp/chain/icon/client"
-	"github.com/icon-project/btp/common/codec"
-	"github.com/icon-project/btp/common/intconv"
-	"github.com/icon-project/btp/common/link"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/types"
+	"github.com/icon-project/btp2/chain/icon/client"
+	"github.com/icon-project/btp2/common/codec"
+	"github.com/icon-project/btp2/common/intconv"
+	"github.com/icon-project/btp2/common/link"
+	"github.com/icon-project/btp2/common/log"
+	"github.com/icon-project/btp2/common/types"
 )
 
 type receiveStatus struct {

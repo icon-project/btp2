@@ -5,10 +5,10 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/icon-project/btp/chain"
-	"github.com/icon-project/btp/common/errors"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/types"
+	"github.com/icon-project/btp2/chain"
+	"github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/log"
+	"github.com/icon-project/btp2/common/types"
 )
 
 const (

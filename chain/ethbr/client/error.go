@@ -19,7 +19,7 @@ package client
 import (
 	"fmt"
 
-	"github.com/icon-project/btp/common/errors"
+	"github.com/icon-project/btp2/common/errors"
 )
 
 const (

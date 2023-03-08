@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/icon-project/btp/chain"
-	"github.com/icon-project/btp/chain/ethbr"
-	"github.com/icon-project/btp/chain/icon"
-	"github.com/icon-project/btp/chain/icon/bridge"
-	"github.com/icon-project/btp/chain/icon/btp2"
-	"github.com/icon-project/btp/common/link"
-	"github.com/icon-project/btp/common/log"
-	"github.com/icon-project/btp/common/types"
-	"github.com/icon-project/btp/common/wallet"
+	"github.com/icon-project/btp2/chain"
+	"github.com/icon-project/btp2/chain/ethbr"
+	"github.com/icon-project/btp2/chain/icon"
+	"github.com/icon-project/btp2/chain/icon/bridge"
+	"github.com/icon-project/btp2/chain/icon/btp2"
+	"github.com/icon-project/btp2/common/link"
+	"github.com/icon-project/btp2/common/log"
+	"github.com/icon-project/btp2/common/types"
+	"github.com/icon-project/btp2/common/wallet"
 )
 
 func NewLink(cfg *Config, srcWallet wallet.Wallet, dstWallet wallet.Wallet, modLevels map[string]string) error {

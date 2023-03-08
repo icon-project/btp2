@@ -18,7 +18,7 @@
 // collections.
 package link
 
-import "github.com/icon-project/btp/common/types"
+import "github.com/icon-project/btp2/common/types"
 
 type MessageItemType int
 
