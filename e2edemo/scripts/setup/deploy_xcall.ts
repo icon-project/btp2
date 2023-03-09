@@ -4,10 +4,11 @@ import {Contract} from "../icon/contract";
 import {IconNetwork} from "../icon/network";
 import {BMC} from "../icon/btp";
 import {Deployments} from "./config";
+import configJson from '../../config/config.json';
 const {JAVASCORE_PATH} = process.env
 
 const deployments = Deployments.getDefault();
-const iconNetwork = IconNetwork.getDefault();
+const iconNetwork = IconNetwork.getDefault(configJson.icon);
 
 async function deploy_xcall() {
   // deploy xCall java module

@@ -6,11 +6,12 @@ import {XCall} from "./icon/xcall";
 import {BaseContract, BigNumber, ContractReceipt} from "ethers";
 import {Deployments} from "./setup/config";
 import {TypedEvent, TypedEventFilter} from "../typechain-types/common";
+import configJson from '../config/config.json';
 
 const {IconConverter} = IconService;
 
 const deployments = Deployments.getDefault();
-const iconNetwork = IconNetwork.getDefault();
+const iconNetwork = IconNetwork.getDefault(configJson.icon);
 
 function getBtpAddress(network: string, dapp: string) {
   return `btp://${network}/${dapp}`;

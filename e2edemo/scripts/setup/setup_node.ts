@@ -1,10 +1,11 @@
 import IconService from "icon-sdk-js";
 import {IconNetwork} from "../icon/network";
 import {Chain, Gov} from "../icon/system";
+import configJson from '../../config/config.json';
 
 const {IconAmount} = IconService;
 
-const iconNetwork = IconNetwork.getDefault();
+const iconNetwork = IconNetwork.getDefault(configJson.icon);
 const chain = new Chain(iconNetwork);
 const gov = new Gov(iconNetwork);
 const prepAddress = iconNetwork.wallet.getAddress()

@@ -1,0 +1,8 @@
+{
+	"name": "icon_local",
+	"contract": "java",
+	"endpoint": "http://localhost:9080/api/v3",
+	"nid": 3,
+	"keystore": "./config/keystore/icon_keystore.json",
+	"keypass": "gochain"
+}

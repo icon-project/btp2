@@ -1,6 +1,8 @@
 #!/bin/bash
 
 RELAY_BIN=../bin/relay
+CONFIG=./config/config.json
+ICON_CONFIG=$(cat ${CONFIG} | jq -r .icon)
 DEPLOYMENTS=deployments.json
 
 if [ ! -f ${RELAY_BIN} ]; then
@@ -15,9 +17,9 @@ HARDHAT_KEYPASS=hardhat
 
 ICON_NETWORK=$(cat ${DEPLOYMENTS} | jq -r .icon.network)
 ICON_BMC_ADDRESS=$(cat ${DEPLOYMENTS} | jq -r .icon.contracts.bmc)
-ICON_ENDPOINT=http://localhost:9080/api/v3/icon_dex
-ICON_KEYSTORE=./docker/icon/config/keystore.json
-ICON_KEYPASS=gochain
+ICON_ENDPOINT=$(cat ${ICON_CONFIG} | jq -r .endpoint)
+ICON_KEYSTORE=$(cat ${ICON_CONFIG} | jq -r .keystore)
+ICON_KEYPASS=$(cat ${ICON_CONFIG} | jq -r .keypass)
 
 if [ "x$1" = x ]; then
     echo "Usage: $0 <target_chain>"

@@ -3,10 +3,11 @@ import {ethers} from 'hardhat';
 import {Contract} from "./icon/contract";
 import {IconNetwork} from "./icon/network";
 import {Deployments} from "./setup/config";
+import configJson from '../config/config.json';
 const {E2E_DEMO_PATH} = process.env
 
 const deployments = Deployments.getDefault();
-const iconNetwork = IconNetwork.getDefault();
+const iconNetwork = IconNetwork.getDefault(configJson.icon);
 
 async function deploy_dapp() {
   // deploy DApp java

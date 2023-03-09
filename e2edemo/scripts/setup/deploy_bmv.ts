@@ -6,12 +6,13 @@ import {Gov} from "../icon/system";
 import {IconNetwork} from "../icon/network";
 import IconService from "icon-sdk-js";
 import {Deployments} from "./config";
+import configJson from '../../config/config.json';
 const {IconConverter} = IconService;
 const {JAVASCORE_PATH, BMV_BRIDGE} = process.env
 
 const bridgeMode = BMV_BRIDGE == "true";
 const deployments = Deployments.getDefault();
-const iconNetwork = IconNetwork.getDefault();
+const iconNetwork = IconNetwork.getDefault(configJson.icon);
 
 let netTypeId = '';
 let netId = '';

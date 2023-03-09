@@ -3,12 +3,13 @@ import { ethers } from 'hardhat';
 import {Contract} from "../icon/contract";
 import {IconNetwork} from "../icon/network";
 import {Deployments} from "./config";
+import configJson from '../../config/config.json';
 const {JAVASCORE_PATH} = process.env
 
 const deployments = new Deployments();
 
 async function deploy_java() {
-  const iconNetwork = IconNetwork.getDefault();
+  const iconNetwork = IconNetwork.getDefault(configJson.icon);
   const BMC_NETWORK_ID = "0x" + iconNetwork.nid.toString(16) + ".icon"
   console.log(`ICON: deploy BMC for ${BMC_NETWORK_ID}`)
 
