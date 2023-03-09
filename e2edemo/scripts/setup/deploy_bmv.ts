@@ -26,7 +26,12 @@ async function open_btp_network() {
   const netName = `hardhat-${lastBlock.height}`
   console.log(`ICON: open BTP network for ${netName}`)
   const gov = new Gov(iconNetwork);
-  const govVersion = await gov.getVersion();
+  let govVersion
+  try {
+    govVersion = await gov.getVersion();
+  } catch (error) {
+    govVersion = "0.0.0"
+  }
   let txHash = ""
   if (govVersion < "2.2.0") {
     txHash = await gov.openBTPNetwork(netName, icon.contracts.bmc)
