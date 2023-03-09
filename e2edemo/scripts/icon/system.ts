@@ -1,6 +1,7 @@
 import IconService from 'icon-sdk-js';
 import {Contract} from "./contract";
 import {IconNetwork} from "./network";
+import Wallet from "icon-sdk-js/build/Wallet";
 
 const {IconAmount} = IconService;
 
@@ -113,6 +114,13 @@ export class Gov extends Contract {
     super(iconNetwork, 'cx0000000000000000000000000000000000000001')
   }
 
+  getVersion() {
+    return this.call({
+      method: 'getVersion',
+      params: {}
+    })
+  }
+
   setRevision(code: number) {
     return this.invoke({
       method: 'setRevision',
@@ -130,6 +138,34 @@ export class Gov extends Contract {
         name: name,
         owner: owner
       }
+    })
+  }
+
+  registerProposal(wallet: Wallet, params: any) {
+    return this.invoke({
+      method: 'registerProposal',
+      params: params,
+      value: "0x56bc75e2d63100000",
+      wallet: wallet
+    })
+  }
+
+  voteProposal(wallet: Wallet, id: string, vote?: string) {
+    return this.invoke({
+      method: 'voteProposal',
+      params: {
+        "id": id,
+        "vote": vote ? vote: "0x1"
+      },
+      wallet: wallet
+    })
+  }
+
+  applyProposal(wallet: Wallet, id: string) {
+    return this.invoke({
+      method: 'applyProposal',
+      params: {"id": id},
+      wallet: wallet
     })
   }
 }

@@ -7,12 +7,14 @@ import {IconNetwork} from "../icon/network";
 import IconService from "icon-sdk-js";
 import {Deployments} from "./config";
 import configJson from '../../config/config.json';
+import Wallet from "icon-sdk-js/build/Wallet";
 const {IconConverter} = IconService;
 const {JAVASCORE_PATH, BMV_BRIDGE} = process.env
 
 const bridgeMode = BMV_BRIDGE == "true";
 const deployments = Deployments.getDefault();
-const iconNetwork = IconNetwork.getDefault(configJson.icon);
+const configICON = configJson.icon
+const iconNetwork = IconNetwork.getDefault(configICON);
 
 let netTypeId = '';
 let netId = '';
@@ -24,8 +26,14 @@ async function open_btp_network() {
   const netName = `hardhat-${lastBlock.height}`
   console.log(`ICON: open BTP network for ${netName}`)
   const gov = new Gov(iconNetwork);
-  await gov.openBTPNetwork(netName, icon.contracts.bmc)
-    .then((txHash) => gov.getTxResult(txHash))
+  const govVersion = await gov.getVersion();
+  let txHash = ""
+  if (govVersion < "2.2.0") {
+    txHash = await gov.openBTPNetwork(netName, icon.contracts.bmc)
+  } else {
+    txHash = await open_btp_network_by_proposal(gov, iconNetwork.preps, "eth", netName, icon.contracts.bmc)
+  }
+  await gov.getTxResult(txHash)
     .then((result) => {
       if (result.status != 1) {
         throw new Error(`ICON: failed to openBTPNetwork: ${result.txHash}`);
@@ -45,6 +53,55 @@ async function open_btp_network() {
   console.log(`networkTypeId=${netTypeId}`);
   console.log(`networkId=${netId}`);
   icon.networkId = netId;
+}
+
+async function open_btp_network_by_proposal(gov: Gov, preps: Wallet[], networkType: string, name: string, owner: string) {
+  let value = [
+    {
+      "name": "call",
+      "value": {
+        "to": "cx0000000000000000000000000000000000000000",
+        "method": "openBTPNetwork",
+        "params": [
+          {
+            "type": "str",
+            "value": networkType,
+          },
+          {
+            "type": "str",
+            "value": name,
+          },
+          {
+            "type": "Address",
+            "value": owner,
+          }
+        ]
+      }
+    }
+  ]
+  let params = {
+    "title": "open BTP Network",
+    "description": "name: " + name + " owner: " + owner,
+    "value": "0x" + Buffer.from(JSON.stringify(value)).toString("hex")
+  }
+  const id = await gov.registerProposal(preps[0], params)
+      .then((txHash) => gov.getTxResult(txHash))
+      .then((result) => {
+        if (result.status != 1) {
+          throw new Error(`ICON: failed to register proposal: ${result.txHash}`);
+        }
+        return result.txHash
+      })
+  console.log(` - proposal ${id} registered`)
+
+  let i
+  for (i = 0; i < preps.length; ++i) {
+    console.log(` - ${preps[i].getAddress()} votes to proposal`)
+    await gov.voteProposal(preps[i], id)
+  }
+
+  console.log(` - apply proposal ${id}`)
+  return gov.applyProposal(preps[0], id)
 }
 
 async function deploy_bmv() {

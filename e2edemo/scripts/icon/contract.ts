@@ -41,17 +41,18 @@ export class Contract {
     return this.iconService.call(payload).execute();
   }
 
-  invoke({method, params, value = '0'}: {
+  invoke({method, params, value = '0', wallet}: {
     method: string;
     value?: string;
     params?: {
       [key: string]: any;
     };
+    wallet?: Wallet;
   }) {
     const payload = new IconBuilder.CallTransactionBuilder()
       .method(method)
       .params(params)
-      .from(this.wallet.getAddress())
+      .from(wallet ? wallet.getAddress() : this.wallet.getAddress())
       .to(this.address)
       .nid(this.nid)
       .version(3)
@@ -60,7 +61,7 @@ export class Contract {
       .value(value)
       .build();
 
-    const signedTx = new SignedTransaction(payload, this.wallet);
+    const signedTx = new SignedTransaction(payload, wallet ? wallet : this.wallet);
     return this.iconService.sendTransaction(signedTx).execute();
   }
 
@@ -110,7 +111,7 @@ export class Contract {
       if (result) return result
       await sleep(2000);
     }
-    throw new Error("Failed to get tx result");
+    throw new Error(`Failed to get tx result ${txHash}`);
   }
 
   filterEvent(eventLogs: any, sig: string, address?: string) : Array<EventLog> {

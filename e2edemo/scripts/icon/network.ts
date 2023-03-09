@@ -10,12 +10,14 @@ export class IconNetwork {
   iconService: IconService;
   nid: number;
   wallet: Wallet;
+  preps: Wallet[];
   private static instance: IconNetwork;
 
-  constructor(_iconService: IconService, _nid: number, _wallet: Wallet) {
+  constructor(_iconService: IconService, _nid: number, _wallet: Wallet, _preps?: Wallet[]) {
     this.iconService = _iconService;
     this.nid = _nid;
     this.wallet = _wallet;
+    this.preps = _preps ? _preps : [];
   }
 
   public static getDefault(confPath: string) {
@@ -24,9 +26,19 @@ export class IconNetwork {
       const conf = JSON.parse(data.toString());
       const httpProvider = new HttpProvider(conf.endpoint);
       const iconService = new IconService(httpProvider);
-      const keystore = require(path.resolve(E2E_DEMO_PATH, conf.keystore));
+      const keystore = require(path.resolve(E2E_DEMO_PATH ? E2E_DEMO_PATH:"./", conf.keystore));
       const wallet = IconWallet.loadKeystore(keystore, conf.keypass, false);
-      this.instance = new this(iconService, conf.nid, wallet);
+      let preps, i
+      preps = []
+      if (conf.preps == undefined) {
+        preps.push(wallet)
+      } else {
+        for (i = 0; i < conf.preps.length; ++i) {
+          const w = IconWallet.loadPrivateKey(conf.preps[i]);
+          preps.push(w)
+        }
+      }
+      this.instance = new this(iconService, conf.nid, wallet, preps);
     }
     return this.instance;
   }

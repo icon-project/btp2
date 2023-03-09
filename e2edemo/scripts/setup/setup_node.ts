@@ -92,22 +92,25 @@ async function setup() {
   }
 
   // ensure public key registration
-  const pubkey = await chain.getPRepNodePublicKey(prepAddress)
-    .catch((error) => {
-      console.log(`error: ${error}`)
-    })
-  console.log(`ICON: pubkey: ${pubkey}`)
-  if (pubkey == undefined) {
-    console.log('ICON: register PRep node publicKey')
-    // prefixing "04" for indicating uncompressed format
-    const pkey = '0x04' + iconNetwork.wallet.getPublicKey();
-    await chain.registerPRepNodePublicKey(prepAddress, pkey)
-      .then((txHash) => chain.getTxResult(txHash))
-      .then((result) => {
-        if (result.status != 1) {
-          throw new Error(`ICON: failed to registerPRepNodePublicKey: ${result.txHash}`);
-        }
+  let i
+  for (i = 0; i < iconNetwork.preps.length; ++i) {
+    const addr = iconNetwork.preps[i].getAddress()
+    const pubkey = await chain.getPRepNodePublicKey(addr)
+      .catch((error) => {
+        console.log(`error: ${error}`)
       })
+    if (pubkey == undefined) {
+      console.log(`ICON: register PRep node publicKey for ${addr}`)
+      // prefixing "04" for indicating uncompressed format
+      const pkey = '0x04' + iconNetwork.wallet.getPublicKey();
+      await chain.registerPRepNodePublicKey(addr, pkey)
+        .then((txHash) => chain.getTxResult(txHash))
+        .then((result) => {
+          if (result.status != 1) {
+            throw new Error(`ICON: failed to registerPRepNodePublicKey: ${result.txHash}`);
+          }
+        })
+    }
   }
   console.log('ICON: node setup completed')
 }
