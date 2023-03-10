@@ -30,7 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/icon-project/btp2/common/jsonrpc"
-	btpTypes "github.com/icon-project/btp2/common/types"
 )
 
 const (
@@ -149,7 +148,7 @@ type BlockNotification struct {
 }
 
 type Event struct {
-	Next     btpTypes.BtpAddress
+	Next     []byte
 	Sequence *big.Int
 	Message  []byte
 }

@@ -23,7 +23,7 @@ type Receipt struct {
 }
 
 type Event struct { //EventDataBTPMessage
-	Next     string
+	Next     []byte
 	Sequence int64
 	Message  []byte
 }

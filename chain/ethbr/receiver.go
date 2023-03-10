@@ -214,6 +214,7 @@ func (e *ethbr) Monitoring(bs *btpTypes.BMCLinkStatus) error {
 			EpLoop:
 				for _, el := range v.Logs {
 					evt, err := logToEvent(&el)
+
 					e.l.Debugf("event[seq:%d next:%s] seq:%d dst:%s",
 						evt.Sequence, evt.Next, e.seq, e.dst.String())
 					if err != nil {
@@ -223,9 +224,11 @@ func (e *ethbr) Monitoring(bs *btpTypes.BMCLinkStatus) error {
 						continue EpLoop
 					}
 					//below statement is unnecessary if 'next' is indexed
-					if evt.Next.String() != e.dst.String() {
+					dstHash := crypto.Keccak256Hash([]byte(e.dst.String()))
+					if !bytes.Equal(evt.Next, dstHash.Bytes()) {
 						continue EpLoop
 					}
+
 					rp, ok := rpsMap[el.TxIndex]
 					if !ok {
 						rp = &client.ReceiptProof{
@@ -343,14 +346,14 @@ func encodeSigHeader(w io.Writer, header *types.Header) {
 }
 
 func logToEvent(el *types.Log) (*client.Event, error) {
-	bm, err := binding.UnpackEventLog(el.Data)
+	mgs, err := binding.UnpackEventLog(el.Data)
 	if err != nil {
 		return nil, err
 	}
 	return &client.Event{
-		Next:     btpTypes.BtpAddress(bm.Next),
-		Sequence: bm.Seq,
-		Message:  bm.Msg,
+		Next:     el.Topics[1].Bytes(),
+		Sequence: el.Topics[2].Big(),
+		Message:  mgs.Msg,
 	}, nil
 }
 

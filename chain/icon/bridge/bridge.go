@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"unsafe"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gorilla/websocket"
 
 	"github.com/icon-project/btp2/chain/icon/client"
@@ -300,7 +301,7 @@ func messageToEvent(next types.BtpAddress, msg string, seq int64) (*Event, error
 		return nil, err
 	}
 	evt := &Event{
-		Next:     next.String(),
+		Next:     crypto.Keccak256Hash([]byte(next.String())).Bytes(),
 		Sequence: seq,
 		Message:  b,
 	}

@@ -89,7 +89,7 @@ func (s *sender) Stop() {
 	close(s.sc)
 }
 func (s *sender) GetStatus() (*btpTypes.BMCLinkStatus, error) {
-	var status binding.TypesLinkStats
+	var status binding.TypesLinkStatus
 	status, err := s.bmc.GetStatus(nil, s.src.String())
 	if err != nil {
 		s.l.Errorf("Error retrieving relay status from BMC")

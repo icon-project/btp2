@@ -4,6 +4,7 @@
 package binding
 
 import (
+	"errors"
 	"math/big"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 
 // Reference imports to suppress errors if they are not otherwise used.
 var (
+	_ = errors.New
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
@@ -26,43 +28,36 @@ var (
 	_ = event.NewSubscription
 )
 
-// TypesBMCMessage is an auto generated low-level Go binding around an user-defined struct.
-type TypesBMCMessage struct {
+// IBMVVerifierStatus is an auto generated low-level Go binding around an user-defined struct.
+type IBMVVerifierStatus struct {
+	Height *big.Int
+	Extra  []byte
+}
+
+// TypesBTPMessage is an auto generated low-level Go binding around an user-defined struct.
+type TypesBTPMessage struct {
 	Src     string
 	Dst     string
 	Svc     string
 	Sn      *big.Int
 	Message []byte
+	Nsn     *big.Int
+	FeeInfo TypesFeeInfo
 }
 
-// TypesBMCService is an auto generated low-level Go binding around an user-defined struct.
-type TypesBMCService struct {
-	ServiceType string
-	Payload     []byte
+// TypesFeeInfo is an auto generated low-level Go binding around an user-defined struct.
+type TypesFeeInfo struct {
+	Network string
+	Values  []*big.Int
 }
 
-// TypesGatherFeeMessage is an auto generated low-level Go binding around an user-defined struct.
-type TypesGatherFeeMessage struct {
-	Fa   string
-	Svcs []string
-}
-
-// TypesLinkStats is an auto generated low-level Go binding around an user-defined struct.
-type TypesLinkStats struct {
+// TypesLinkStatus is an auto generated low-level Go binding around an user-defined struct.
+type TypesLinkStatus struct {
 	RxSeq         *big.Int
 	TxSeq         *big.Int
-	Verifier      TypesVerifierStats
+	Verifier      IBMVVerifierStatus
 	CurrentHeight *big.Int
 }
-
-// TypesVerifierStats is an auto generated low-level Go binding around an user-defined struct.
-type TypesVerifierStats struct {
-	Height *big.Int
-	Extra  []byte
-}
-
-// BMCABI is the input ABI used to generate the binding from.
-const BMCABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"_sn\",\"type\":\"int256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_code\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_errMsg\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_svcErrCode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_svcErrMsg\",\"type\":\"string\"}],\"name\":\"ErrorOnBTPError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_next\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_seq\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"Message\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_network\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"_bmcManagementAddr\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBmcBtpAddress\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_prev\",\"type\":\"string\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"handleRelayMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_rlp\",\"type\":\"bytes\"}],\"name\":\"tryDecodeBTPMessage\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"src\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"dst\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"svc\",\"type\":\"string\"},{\"internalType\":\"int256\",\"name\":\"sn\",\"type\":\"int256\"},{\"internalType\":\"bytes\",\"name\":\"message\",\"type\":\"bytes\"}],\"internalType\":\"structTypes.BMCMessage\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"tryDecodeBMCService\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"serviceType\",\"type\":\"string\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"}],\"internalType\":\"structTypes.BMCService\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"tryDecodeGatherFeeMessage\",\"outputs\":[{\"components\":[{\"internalType\":\"string\",\"name\":\"fa\",\"type\":\"string\"},{\"internalType\":\"string[]\",\"name\":\"svcs\",\"type\":\"string[]\"}],\"internalType\":\"structTypes.GatherFeeMessage\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_sn\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"sendMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_link\",\"type\":\"string\"}],\"name\":\"getStatus\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"rxSeq\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"txSeq\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"extra\",\"type\":\"bytes\"}],\"internalType\":\"structTypes.VerifierStats\",\"name\":\"verifier\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"currentHeight\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.LinkStats\",\"name\":\"_linkStats\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]"
 
 // BMC is an auto generated Go binding around an Ethereum contract.
 type BMC struct {
@@ -158,6 +153,7 @@ func NewBMCFilterer(address common.Address, filterer bind.ContractFilterer) (*BM
 	}
 	return &BMCFilterer{contract: contract}, nil
 }
+const BMCABI = "[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"string\",\"name\":\"_src\",\"type\":\"string\"},{\"indexed\":true,\"internalType\":\"int256\",\"name\":\"_nsn\",\"type\":\"int256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_next\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_event\",\"type\":\"string\"}],\"name\":\"BTPEvent\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"_sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"string\",\"name\":\"_network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_receiver\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"_nsn\",\"type\":\"int256\"}],\"name\":\"ClaimReward\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"_sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"string\",\"name\":\"_network\",\"type\":\"string\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"_nsn\",\"type\":\"int256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_result\",\"type\":\"uint256\"}],\"name\":\"ClaimRewardResult\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"version\",\"type\":\"uint8\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"string\",\"name\":\"_next\",\"type\":\"string\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"_seq\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"Message\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"string\",\"name\":\"_prev\",\"type\":\"string\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"_seq\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"_ecode\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"_emsg\",\"type\":\"string\"}],\"name\":\"MessageDropped\",\"type\":\"event\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_network\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"_bmcManagementAddr\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_bmcServiceAddr\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getBtpAddress\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getNetworkAddress\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_prev\",\"type\":\"string\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"handleRelayMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_svc\",\"type\":\"string\"},{\"internalType\":\"int256\",\"name\":\"_sn\",\"type\":\"int256\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"sendMessage\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getNetworkSn\",\"outputs\":[{\"internalType\":\"int256\",\"name\":\"\",\"type\":\"int256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_to\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"_response\",\"type\":\"bool\"}],\"name\":\"getFee\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_link\",\"type\":\"string\"}],\"name\":\"getStatus\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"rxSeq\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"txSeq\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"height\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"extra\",\"type\":\"bytes\"}],\"internalType\":\"structIBMV.VerifierStatus\",\"name\":\"verifier\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"currentHeight\",\"type\":\"uint256\"}],\"internalType\":\"structTypes.LinkStatus\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_next\",\"type\":\"string\"},{\"internalType\":\"bytes\",\"name\":\"_msg\",\"type\":\"bytes\"}],\"name\":\"sendInternal\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_prev\",\"type\":\"string\"},{\"internalType\":\"uint256\",\"name\":\"_seq\",\"type\":\"uint256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"src\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"dst\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"svc\",\"type\":\"string\"},{\"internalType\":\"int256\",\"name\":\"sn\",\"type\":\"int256\"},{\"internalType\":\"bytes\",\"name\":\"message\",\"type\":\"bytes\"},{\"internalType\":\"int256\",\"name\":\"nsn\",\"type\":\"int256\"},{\"components\":[{\"internalType\":\"string\",\"name\":\"network\",\"type\":\"string\"},{\"internalType\":\"uint256[]\",\"name\":\"values\",\"type\":\"uint256[]\"}],\"internalType\":\"structTypes.FeeInfo\",\"name\":\"feeInfo\",\"type\":\"tuple\"}],\"internalType\":\"structTypes.BTPMessage\",\"name\":\"_msg\",\"type\":\"tuple\"}],\"name\":\"dropMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_link\",\"type\":\"string\"}],\"name\":\"clearSeq\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_network\",\"type\":\"string\"},{\"internalType\":\"address\",\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"getReward\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_sender\",\"type\":\"address\"},{\"internalType\":\"string\",\"name\":\"_network\",\"type\":\"string\"},{\"internalType\":\"int256\",\"name\":\"_nsn\",\"type\":\"int256\"},{\"internalType\":\"uint256\",\"name\":\"_result\",\"type\":\"uint256\"}],\"name\":\"emitClaimRewardResult\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_network\",\"type\":\"string\"},{\"internalType\":\"string\",\"name\":\"_receiver\",\"type\":\"string\"}],\"name\":\"claimReward\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"}]"
 
 // bindBMC binds a generic wrapper to an already deployed contract.
 func bindBMC(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
@@ -206,12 +202,12 @@ func (_BMC *BMCTransactorRaw) Transact(opts *bind.TransactOpts, method string, p
 	return _BMC.Contract.contract.Transact(opts, method, params...)
 }
 
-// GetBmcBtpAddress is a free data retrieval call binding the contract method 0x2a4011e9.
+// GetBtpAddress is a free data retrieval call binding the contract method 0x4f63a21d.
 //
-// Solidity: function getBmcBtpAddress() view returns(string)
-func (_BMC *BMCCaller) GetBmcBtpAddress(opts *bind.CallOpts) (string, error) {
+// Solidity: function getBtpAddress() view returns(string)
+func (_BMC *BMCCaller) GetBtpAddress(opts *bind.CallOpts) (string, error) {
 	var out []interface{}
-	err := _BMC.contract.Call(opts, &out, "getBmcBtpAddress")
+	err := _BMC.contract.Call(opts, &out, "getBtpAddress")
 
 	if err != nil {
 		return *new(string), err
@@ -223,32 +219,156 @@ func (_BMC *BMCCaller) GetBmcBtpAddress(opts *bind.CallOpts) (string, error) {
 
 }
 
-// GetBmcBtpAddress is a free data retrieval call binding the contract method 0x2a4011e9.
+// GetBtpAddress is a free data retrieval call binding the contract method 0x4f63a21d.
 //
-// Solidity: function getBmcBtpAddress() view returns(string)
-func (_BMC *BMCSession) GetBmcBtpAddress() (string, error) {
-	return _BMC.Contract.GetBmcBtpAddress(&_BMC.CallOpts)
+// Solidity: function getBtpAddress() view returns(string)
+func (_BMC *BMCSession) GetBtpAddress() (string, error) {
+	return _BMC.Contract.GetBtpAddress(&_BMC.CallOpts)
 }
 
-// GetBmcBtpAddress is a free data retrieval call binding the contract method 0x2a4011e9.
+// GetBtpAddress is a free data retrieval call binding the contract method 0x4f63a21d.
 //
-// Solidity: function getBmcBtpAddress() view returns(string)
-func (_BMC *BMCCallerSession) GetBmcBtpAddress() (string, error) {
-	return _BMC.Contract.GetBmcBtpAddress(&_BMC.CallOpts)
+// Solidity: function getBtpAddress() view returns(string)
+func (_BMC *BMCCallerSession) GetBtpAddress() (string, error) {
+	return _BMC.Contract.GetBtpAddress(&_BMC.CallOpts)
+}
+
+// GetFee is a free data retrieval call binding the contract method 0x7d4c4f4a.
+//
+// Solidity: function getFee(string _to, bool _response) view returns(uint256)
+func (_BMC *BMCCaller) GetFee(opts *bind.CallOpts, _to string, _response bool) (*big.Int, error) {
+	var out []interface{}
+	err := _BMC.contract.Call(opts, &out, "getFee", _to, _response)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetFee is a free data retrieval call binding the contract method 0x7d4c4f4a.
+//
+// Solidity: function getFee(string _to, bool _response) view returns(uint256)
+func (_BMC *BMCSession) GetFee(_to string, _response bool) (*big.Int, error) {
+	return _BMC.Contract.GetFee(&_BMC.CallOpts, _to, _response)
+}
+
+// GetFee is a free data retrieval call binding the contract method 0x7d4c4f4a.
+//
+// Solidity: function getFee(string _to, bool _response) view returns(uint256)
+func (_BMC *BMCCallerSession) GetFee(_to string, _response bool) (*big.Int, error) {
+	return _BMC.Contract.GetFee(&_BMC.CallOpts, _to, _response)
+}
+
+// GetNetworkAddress is a free data retrieval call binding the contract method 0x6bf459cb.
+//
+// Solidity: function getNetworkAddress() view returns(string)
+func (_BMC *BMCCaller) GetNetworkAddress(opts *bind.CallOpts) (string, error) {
+	var out []interface{}
+	err := _BMC.contract.Call(opts, &out, "getNetworkAddress")
+
+	if err != nil {
+		return *new(string), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(string)).(*string)
+
+	return out0, err
+
+}
+
+// GetNetworkAddress is a free data retrieval call binding the contract method 0x6bf459cb.
+//
+// Solidity: function getNetworkAddress() view returns(string)
+func (_BMC *BMCSession) GetNetworkAddress() (string, error) {
+	return _BMC.Contract.GetNetworkAddress(&_BMC.CallOpts)
+}
+
+// GetNetworkAddress is a free data retrieval call binding the contract method 0x6bf459cb.
+//
+// Solidity: function getNetworkAddress() view returns(string)
+func (_BMC *BMCCallerSession) GetNetworkAddress() (string, error) {
+	return _BMC.Contract.GetNetworkAddress(&_BMC.CallOpts)
+}
+
+// GetNetworkSn is a free data retrieval call binding the contract method 0x676286ba.
+//
+// Solidity: function getNetworkSn() view returns(int256)
+func (_BMC *BMCCaller) GetNetworkSn(opts *bind.CallOpts) (*big.Int, error) {
+	var out []interface{}
+	err := _BMC.contract.Call(opts, &out, "getNetworkSn")
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetNetworkSn is a free data retrieval call binding the contract method 0x676286ba.
+//
+// Solidity: function getNetworkSn() view returns(int256)
+func (_BMC *BMCSession) GetNetworkSn() (*big.Int, error) {
+	return _BMC.Contract.GetNetworkSn(&_BMC.CallOpts)
+}
+
+// GetNetworkSn is a free data retrieval call binding the contract method 0x676286ba.
+//
+// Solidity: function getNetworkSn() view returns(int256)
+func (_BMC *BMCCallerSession) GetNetworkSn() (*big.Int, error) {
+	return _BMC.Contract.GetNetworkSn(&_BMC.CallOpts)
+}
+
+// GetReward is a free data retrieval call binding the contract method 0x64cd3750.
+//
+// Solidity: function getReward(string _network, address _addr) view returns(uint256)
+func (_BMC *BMCCaller) GetReward(opts *bind.CallOpts, _network string, _addr common.Address) (*big.Int, error) {
+	var out []interface{}
+	err := _BMC.contract.Call(opts, &out, "getReward", _network, _addr)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// GetReward is a free data retrieval call binding the contract method 0x64cd3750.
+//
+// Solidity: function getReward(string _network, address _addr) view returns(uint256)
+func (_BMC *BMCSession) GetReward(_network string, _addr common.Address) (*big.Int, error) {
+	return _BMC.Contract.GetReward(&_BMC.CallOpts, _network, _addr)
+}
+
+// GetReward is a free data retrieval call binding the contract method 0x64cd3750.
+//
+// Solidity: function getReward(string _network, address _addr) view returns(uint256)
+func (_BMC *BMCCallerSession) GetReward(_network string, _addr common.Address) (*big.Int, error) {
+	return _BMC.Contract.GetReward(&_BMC.CallOpts, _network, _addr)
 }
 
 // GetStatus is a free data retrieval call binding the contract method 0x22b05ed2.
 //
-// Solidity: function getStatus(string _link) view returns((uint256,uint256,(uint256,bytes),uint256) _linkStats)
-func (_BMC *BMCCaller) GetStatus(opts *bind.CallOpts, _link string) (TypesLinkStats, error) {
+// Solidity: function getStatus(string _link) view returns((uint256,uint256,(uint256,bytes),uint256))
+func (_BMC *BMCCaller) GetStatus(opts *bind.CallOpts, _link string) (TypesLinkStatus, error) {
 	var out []interface{}
 	err := _BMC.contract.Call(opts, &out, "getStatus", _link)
 
 	if err != nil {
-		return *new(TypesLinkStats), err
+		return *new(TypesLinkStatus), err
 	}
 
-	out0 := *abi.ConvertType(out[0], new(TypesLinkStats)).(*TypesLinkStats)
+	out0 := *abi.ConvertType(out[0], new(TypesLinkStatus)).(*TypesLinkStatus)
 
 	return out0, err
 
@@ -256,109 +376,100 @@ func (_BMC *BMCCaller) GetStatus(opts *bind.CallOpts, _link string) (TypesLinkSt
 
 // GetStatus is a free data retrieval call binding the contract method 0x22b05ed2.
 //
-// Solidity: function getStatus(string _link) view returns((uint256,uint256,(uint256,bytes),uint256) _linkStats)
-func (_BMC *BMCSession) GetStatus(_link string) (TypesLinkStats, error) {
+// Solidity: function getStatus(string _link) view returns((uint256,uint256,(uint256,bytes),uint256))
+func (_BMC *BMCSession) GetStatus(_link string) (TypesLinkStatus, error) {
 	return _BMC.Contract.GetStatus(&_BMC.CallOpts, _link)
 }
 
 // GetStatus is a free data retrieval call binding the contract method 0x22b05ed2.
 //
-// Solidity: function getStatus(string _link) view returns((uint256,uint256,(uint256,bytes),uint256) _linkStats)
-func (_BMC *BMCCallerSession) GetStatus(_link string) (TypesLinkStats, error) {
+// Solidity: function getStatus(string _link) view returns((uint256,uint256,(uint256,bytes),uint256))
+func (_BMC *BMCCallerSession) GetStatus(_link string) (TypesLinkStatus, error) {
 	return _BMC.Contract.GetStatus(&_BMC.CallOpts, _link)
 }
 
-// TryDecodeBMCService is a free data retrieval call binding the contract method 0x2294c488.
+// ClaimReward is a paid mutator transaction binding the contract method 0xcb7477b5.
 //
-// Solidity: function tryDecodeBMCService(bytes _msg) pure returns((string,bytes))
-func (_BMC *BMCCaller) TryDecodeBMCService(opts *bind.CallOpts, _msg []byte) (TypesBMCService, error) {
-	var out []interface{}
-	err := _BMC.contract.Call(opts, &out, "tryDecodeBMCService", _msg)
-
-	if err != nil {
-		return *new(TypesBMCService), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(TypesBMCService)).(*TypesBMCService)
-
-	return out0, err
-
+// Solidity: function claimReward(string _network, string _receiver) payable returns()
+func (_BMC *BMCTransactor) ClaimReward(opts *bind.TransactOpts, _network string, _receiver string) (*types.Transaction, error) {
+	return _BMC.contract.Transact(opts, "claimReward", _network, _receiver)
 }
 
-// TryDecodeBMCService is a free data retrieval call binding the contract method 0x2294c488.
+// ClaimReward is a paid mutator transaction binding the contract method 0xcb7477b5.
 //
-// Solidity: function tryDecodeBMCService(bytes _msg) pure returns((string,bytes))
-func (_BMC *BMCSession) TryDecodeBMCService(_msg []byte) (TypesBMCService, error) {
-	return _BMC.Contract.TryDecodeBMCService(&_BMC.CallOpts, _msg)
+// Solidity: function claimReward(string _network, string _receiver) payable returns()
+func (_BMC *BMCSession) ClaimReward(_network string, _receiver string) (*types.Transaction, error) {
+	return _BMC.Contract.ClaimReward(&_BMC.TransactOpts, _network, _receiver)
 }
 
-// TryDecodeBMCService is a free data retrieval call binding the contract method 0x2294c488.
+// ClaimReward is a paid mutator transaction binding the contract method 0xcb7477b5.
 //
-// Solidity: function tryDecodeBMCService(bytes _msg) pure returns((string,bytes))
-func (_BMC *BMCCallerSession) TryDecodeBMCService(_msg []byte) (TypesBMCService, error) {
-	return _BMC.Contract.TryDecodeBMCService(&_BMC.CallOpts, _msg)
+// Solidity: function claimReward(string _network, string _receiver) payable returns()
+func (_BMC *BMCTransactorSession) ClaimReward(_network string, _receiver string) (*types.Transaction, error) {
+	return _BMC.Contract.ClaimReward(&_BMC.TransactOpts, _network, _receiver)
 }
 
-// TryDecodeBTPMessage is a free data retrieval call binding the contract method 0x23c31a43.
+// ClearSeq is a paid mutator transaction binding the contract method 0x019d2420.
 //
-// Solidity: function tryDecodeBTPMessage(bytes _rlp) pure returns((string,string,string,int256,bytes))
-func (_BMC *BMCCaller) TryDecodeBTPMessage(opts *bind.CallOpts, _rlp []byte) (TypesBMCMessage, error) {
-	var out []interface{}
-	err := _BMC.contract.Call(opts, &out, "tryDecodeBTPMessage", _rlp)
-
-	if err != nil {
-		return *new(TypesBMCMessage), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(TypesBMCMessage)).(*TypesBMCMessage)
-
-	return out0, err
-
+// Solidity: function clearSeq(string _link) returns()
+func (_BMC *BMCTransactor) ClearSeq(opts *bind.TransactOpts, _link string) (*types.Transaction, error) {
+	return _BMC.contract.Transact(opts, "clearSeq", _link)
 }
 
-// TryDecodeBTPMessage is a free data retrieval call binding the contract method 0x23c31a43.
+// ClearSeq is a paid mutator transaction binding the contract method 0x019d2420.
 //
-// Solidity: function tryDecodeBTPMessage(bytes _rlp) pure returns((string,string,string,int256,bytes))
-func (_BMC *BMCSession) TryDecodeBTPMessage(_rlp []byte) (TypesBMCMessage, error) {
-	return _BMC.Contract.TryDecodeBTPMessage(&_BMC.CallOpts, _rlp)
+// Solidity: function clearSeq(string _link) returns()
+func (_BMC *BMCSession) ClearSeq(_link string) (*types.Transaction, error) {
+	return _BMC.Contract.ClearSeq(&_BMC.TransactOpts, _link)
 }
 
-// TryDecodeBTPMessage is a free data retrieval call binding the contract method 0x23c31a43.
+// ClearSeq is a paid mutator transaction binding the contract method 0x019d2420.
 //
-// Solidity: function tryDecodeBTPMessage(bytes _rlp) pure returns((string,string,string,int256,bytes))
-func (_BMC *BMCCallerSession) TryDecodeBTPMessage(_rlp []byte) (TypesBMCMessage, error) {
-	return _BMC.Contract.TryDecodeBTPMessage(&_BMC.CallOpts, _rlp)
+// Solidity: function clearSeq(string _link) returns()
+func (_BMC *BMCTransactorSession) ClearSeq(_link string) (*types.Transaction, error) {
+	return _BMC.Contract.ClearSeq(&_BMC.TransactOpts, _link)
 }
 
-// TryDecodeGatherFeeMessage is a free data retrieval call binding the contract method 0x9624379f.
+// DropMessage is a paid mutator transaction binding the contract method 0x39ff9dc1.
 //
-// Solidity: function tryDecodeGatherFeeMessage(bytes _msg) pure returns((string,string[]))
-func (_BMC *BMCCaller) TryDecodeGatherFeeMessage(opts *bind.CallOpts, _msg []byte) (TypesGatherFeeMessage, error) {
-	var out []interface{}
-	err := _BMC.contract.Call(opts, &out, "tryDecodeGatherFeeMessage", _msg)
-
-	if err != nil {
-		return *new(TypesGatherFeeMessage), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(TypesGatherFeeMessage)).(*TypesGatherFeeMessage)
-
-	return out0, err
-
+// Solidity: function dropMessage(string _prev, uint256 _seq, (string,string,string,int256,bytes,int256,(string,uint256[])) _msg) returns()
+func (_BMC *BMCTransactor) DropMessage(opts *bind.TransactOpts, _prev string, _seq *big.Int, _msg TypesBTPMessage) (*types.Transaction, error) {
+	return _BMC.contract.Transact(opts, "dropMessage", _prev, _seq, _msg)
 }
 
-// TryDecodeGatherFeeMessage is a free data retrieval call binding the contract method 0x9624379f.
+// DropMessage is a paid mutator transaction binding the contract method 0x39ff9dc1.
 //
-// Solidity: function tryDecodeGatherFeeMessage(bytes _msg) pure returns((string,string[]))
-func (_BMC *BMCSession) TryDecodeGatherFeeMessage(_msg []byte) (TypesGatherFeeMessage, error) {
-	return _BMC.Contract.TryDecodeGatherFeeMessage(&_BMC.CallOpts, _msg)
+// Solidity: function dropMessage(string _prev, uint256 _seq, (string,string,string,int256,bytes,int256,(string,uint256[])) _msg) returns()
+func (_BMC *BMCSession) DropMessage(_prev string, _seq *big.Int, _msg TypesBTPMessage) (*types.Transaction, error) {
+	return _BMC.Contract.DropMessage(&_BMC.TransactOpts, _prev, _seq, _msg)
 }
 
-// TryDecodeGatherFeeMessage is a free data retrieval call binding the contract method 0x9624379f.
+// DropMessage is a paid mutator transaction binding the contract method 0x39ff9dc1.
 //
-// Solidity: function tryDecodeGatherFeeMessage(bytes _msg) pure returns((string,string[]))
-func (_BMC *BMCCallerSession) TryDecodeGatherFeeMessage(_msg []byte) (TypesGatherFeeMessage, error) {
-	return _BMC.Contract.TryDecodeGatherFeeMessage(&_BMC.CallOpts, _msg)
+// Solidity: function dropMessage(string _prev, uint256 _seq, (string,string,string,int256,bytes,int256,(string,uint256[])) _msg) returns()
+func (_BMC *BMCTransactorSession) DropMessage(_prev string, _seq *big.Int, _msg TypesBTPMessage) (*types.Transaction, error) {
+	return _BMC.Contract.DropMessage(&_BMC.TransactOpts, _prev, _seq, _msg)
+}
+
+// EmitClaimRewardResult is a paid mutator transaction binding the contract method 0x947dfac2.
+//
+// Solidity: function emitClaimRewardResult(address _sender, string _network, int256 _nsn, uint256 _result) returns()
+func (_BMC *BMCTransactor) EmitClaimRewardResult(opts *bind.TransactOpts, _sender common.Address, _network string, _nsn *big.Int, _result *big.Int) (*types.Transaction, error) {
+	return _BMC.contract.Transact(opts, "emitClaimRewardResult", _sender, _network, _nsn, _result)
+}
+
+// EmitClaimRewardResult is a paid mutator transaction binding the contract method 0x947dfac2.
+//
+// Solidity: function emitClaimRewardResult(address _sender, string _network, int256 _nsn, uint256 _result) returns()
+func (_BMC *BMCSession) EmitClaimRewardResult(_sender common.Address, _network string, _nsn *big.Int, _result *big.Int) (*types.Transaction, error) {
+	return _BMC.Contract.EmitClaimRewardResult(&_BMC.TransactOpts, _sender, _network, _nsn, _result)
+}
+
+// EmitClaimRewardResult is a paid mutator transaction binding the contract method 0x947dfac2.
+//
+// Solidity: function emitClaimRewardResult(address _sender, string _network, int256 _nsn, uint256 _result) returns()
+func (_BMC *BMCTransactorSession) EmitClaimRewardResult(_sender common.Address, _network string, _nsn *big.Int, _result *big.Int) (*types.Transaction, error) {
+	return _BMC.Contract.EmitClaimRewardResult(&_BMC.TransactOpts, _sender, _network, _nsn, _result)
 }
 
 // HandleRelayMessage is a paid mutator transaction binding the contract method 0x21b1e9bb.
@@ -382,51 +493,93 @@ func (_BMC *BMCTransactorSession) HandleRelayMessage(_prev string, _msg []byte) 
 	return _BMC.Contract.HandleRelayMessage(&_BMC.TransactOpts, _prev, _msg)
 }
 
-// Initialize is a paid mutator transaction binding the contract method 0x7ab4339d.
+// Initialize is a paid mutator transaction binding the contract method 0x463fd1af.
 //
-// Solidity: function initialize(string _network, address _bmcManagementAddr) returns()
-func (_BMC *BMCTransactor) Initialize(opts *bind.TransactOpts, _network string, _bmcManagementAddr common.Address) (*types.Transaction, error) {
-	return _BMC.contract.Transact(opts, "initialize", _network, _bmcManagementAddr)
+// Solidity: function initialize(string _network, address _bmcManagementAddr, address _bmcServiceAddr) returns()
+func (_BMC *BMCTransactor) Initialize(opts *bind.TransactOpts, _network string, _bmcManagementAddr common.Address, _bmcServiceAddr common.Address) (*types.Transaction, error) {
+	return _BMC.contract.Transact(opts, "initialize", _network, _bmcManagementAddr, _bmcServiceAddr)
 }
 
-// Initialize is a paid mutator transaction binding the contract method 0x7ab4339d.
+// Initialize is a paid mutator transaction binding the contract method 0x463fd1af.
 //
-// Solidity: function initialize(string _network, address _bmcManagementAddr) returns()
-func (_BMC *BMCSession) Initialize(_network string, _bmcManagementAddr common.Address) (*types.Transaction, error) {
-	return _BMC.Contract.Initialize(&_BMC.TransactOpts, _network, _bmcManagementAddr)
+// Solidity: function initialize(string _network, address _bmcManagementAddr, address _bmcServiceAddr) returns()
+func (_BMC *BMCSession) Initialize(_network string, _bmcManagementAddr common.Address, _bmcServiceAddr common.Address) (*types.Transaction, error) {
+	return _BMC.Contract.Initialize(&_BMC.TransactOpts, _network, _bmcManagementAddr, _bmcServiceAddr)
 }
 
-// Initialize is a paid mutator transaction binding the contract method 0x7ab4339d.
+// Initialize is a paid mutator transaction binding the contract method 0x463fd1af.
 //
-// Solidity: function initialize(string _network, address _bmcManagementAddr) returns()
-func (_BMC *BMCTransactorSession) Initialize(_network string, _bmcManagementAddr common.Address) (*types.Transaction, error) {
-	return _BMC.Contract.Initialize(&_BMC.TransactOpts, _network, _bmcManagementAddr)
+// Solidity: function initialize(string _network, address _bmcManagementAddr, address _bmcServiceAddr) returns()
+func (_BMC *BMCTransactorSession) Initialize(_network string, _bmcManagementAddr common.Address, _bmcServiceAddr common.Address) (*types.Transaction, error) {
+	return _BMC.Contract.Initialize(&_BMC.TransactOpts, _network, _bmcManagementAddr, _bmcServiceAddr)
 }
 
-// SendMessage is a paid mutator transaction binding the contract method 0xbf6c1d9a.
+// SendInternal is a paid mutator transaction binding the contract method 0xdf9ccb10.
 //
-// Solidity: function sendMessage(string _to, string _svc, uint256 _sn, bytes _msg) returns()
+// Solidity: function sendInternal(string _next, bytes _msg) returns()
+func (_BMC *BMCTransactor) SendInternal(opts *bind.TransactOpts, _next string, _msg []byte) (*types.Transaction, error) {
+	return _BMC.contract.Transact(opts, "sendInternal", _next, _msg)
+}
+
+// SendInternal is a paid mutator transaction binding the contract method 0xdf9ccb10.
+//
+// Solidity: function sendInternal(string _next, bytes _msg) returns()
+func (_BMC *BMCSession) SendInternal(_next string, _msg []byte) (*types.Transaction, error) {
+	return _BMC.Contract.SendInternal(&_BMC.TransactOpts, _next, _msg)
+}
+
+// SendInternal is a paid mutator transaction binding the contract method 0xdf9ccb10.
+//
+// Solidity: function sendInternal(string _next, bytes _msg) returns()
+func (_BMC *BMCTransactorSession) SendInternal(_next string, _msg []byte) (*types.Transaction, error) {
+	return _BMC.Contract.SendInternal(&_BMC.TransactOpts, _next, _msg)
+}
+
+// SendMessage is a paid mutator transaction binding the contract method 0x522a901e.
+//
+// Solidity: function sendMessage(string _to, string _svc, int256 _sn, bytes _msg) payable returns(int256)
 func (_BMC *BMCTransactor) SendMessage(opts *bind.TransactOpts, _to string, _svc string, _sn *big.Int, _msg []byte) (*types.Transaction, error) {
 	return _BMC.contract.Transact(opts, "sendMessage", _to, _svc, _sn, _msg)
 }
 
-// SendMessage is a paid mutator transaction binding the contract method 0xbf6c1d9a.
+// SendMessage is a paid mutator transaction binding the contract method 0x522a901e.
 //
-// Solidity: function sendMessage(string _to, string _svc, uint256 _sn, bytes _msg) returns()
+// Solidity: function sendMessage(string _to, string _svc, int256 _sn, bytes _msg) payable returns(int256)
 func (_BMC *BMCSession) SendMessage(_to string, _svc string, _sn *big.Int, _msg []byte) (*types.Transaction, error) {
 	return _BMC.Contract.SendMessage(&_BMC.TransactOpts, _to, _svc, _sn, _msg)
 }
 
-// SendMessage is a paid mutator transaction binding the contract method 0xbf6c1d9a.
+// SendMessage is a paid mutator transaction binding the contract method 0x522a901e.
 //
-// Solidity: function sendMessage(string _to, string _svc, uint256 _sn, bytes _msg) returns()
+// Solidity: function sendMessage(string _to, string _svc, int256 _sn, bytes _msg) payable returns(int256)
 func (_BMC *BMCTransactorSession) SendMessage(_to string, _svc string, _sn *big.Int, _msg []byte) (*types.Transaction, error) {
 	return _BMC.Contract.SendMessage(&_BMC.TransactOpts, _to, _svc, _sn, _msg)
 }
 
-// BMCErrorOnBTPErrorIterator is returned from FilterErrorOnBTPError and is used to iterate over the raw logs and unpacked data for ErrorOnBTPError events raised by the BMC contract.
-type BMCErrorOnBTPErrorIterator struct {
-	Event *BMCErrorOnBTPError // Event containing the contract specifics and raw log
+// Receive is a paid mutator transaction binding the contract receive function.
+//
+// Solidity: receive() payable returns()
+func (_BMC *BMCTransactor) Receive(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _BMC.contract.RawTransact(opts, nil) // calldata is disallowed for receive function
+}
+
+// Receive is a paid mutator transaction binding the contract receive function.
+//
+// Solidity: receive() payable returns()
+func (_BMC *BMCSession) Receive() (*types.Transaction, error) {
+	return _BMC.Contract.Receive(&_BMC.TransactOpts)
+}
+
+// Receive is a paid mutator transaction binding the contract receive function.
+//
+// Solidity: receive() payable returns()
+func (_BMC *BMCTransactorSession) Receive() (*types.Transaction, error) {
+	return _BMC.Contract.Receive(&_BMC.TransactOpts)
+}
+
+// BMCBTPEventIterator is returned from FilterBTPEvent and is used to iterate over the raw logs and unpacked data for BTPEvent events raised by the BMC contract.
+type BMCBTPEventIterator struct {
+	Event *BMCBTPEvent // Event containing the contract specifics and raw log
 
 	contract *bind.BoundContract // Generic contract to use for unpacking event data
 	event    string              // Event name to use for unpacking event data
@@ -440,7 +593,7 @@ type BMCErrorOnBTPErrorIterator struct {
 // Next advances the iterator to the subsequent event, returning whether there
 // are any more events found. In case of a retrieval or parsing error, false is
 // returned and Error() can be queried for the exact failure.
-func (it *BMCErrorOnBTPErrorIterator) Next() bool {
+func (it *BMCBTPEventIterator) Next() bool {
 	// If the iterator failed, stop iterating
 	if it.fail != nil {
 		return false
@@ -449,7 +602,7 @@ func (it *BMCErrorOnBTPErrorIterator) Next() bool {
 	if it.done {
 		select {
 		case log := <-it.logs:
-			it.Event = new(BMCErrorOnBTPError)
+			it.Event = new(BMCBTPEvent)
 			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 				it.fail = err
 				return false
@@ -464,7 +617,7 @@ func (it *BMCErrorOnBTPErrorIterator) Next() bool {
 	// Iterator still in progress, wait for either a data or an error event
 	select {
 	case log := <-it.logs:
-		it.Event = new(BMCErrorOnBTPError)
+		it.Event = new(BMCBTPEvent)
 		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
 			it.fail = err
 			return false
@@ -480,46 +633,62 @@ func (it *BMCErrorOnBTPErrorIterator) Next() bool {
 }
 
 // Error returns any retrieval or parsing error occurred during filtering.
-func (it *BMCErrorOnBTPErrorIterator) Error() error {
+func (it *BMCBTPEventIterator) Error() error {
 	return it.fail
 }
 
 // Close terminates the iteration process, releasing any pending underlying
 // resources.
-func (it *BMCErrorOnBTPErrorIterator) Close() error {
+func (it *BMCBTPEventIterator) Close() error {
 	it.sub.Unsubscribe()
 	return nil
 }
 
-// BMCErrorOnBTPError represents a ErrorOnBTPError event raised by the BMC contract.
-type BMCErrorOnBTPError struct {
-	Svc        string
-	Sn         *big.Int
-	Code       *big.Int
-	ErrMsg     string
-	SvcErrCode *big.Int
-	SvcErrMsg  string
-	Raw        types.Log // Blockchain specific contextual infos
+// BMCBTPEvent represents a BTPEvent event raised by the BMC contract.
+type BMCBTPEvent struct {
+	Src   common.Hash
+	Nsn   *big.Int
+	Next  string
+	Event string
+	Raw   types.Log // Blockchain specific contextual infos
 }
 
-// FilterErrorOnBTPError is a free log retrieval operation binding the contract event 0x45eab163faa71c8b113fcbc0dcc77bd39e7e3365be446895b5169bd97fc5522a.
+// FilterBTPEvent is a free log retrieval operation binding the contract event 0x51f135d1c44e53689ca91af3b1bce4918d2b590d92bb76a854ab30e7de741828.
 //
-// Solidity: event ErrorOnBTPError(string _svc, int256 _sn, uint256 _code, string _errMsg, uint256 _svcErrCode, string _svcErrMsg)
-func (_BMC *BMCFilterer) FilterErrorOnBTPError(opts *bind.FilterOpts) (*BMCErrorOnBTPErrorIterator, error) {
+// Solidity: event BTPEvent(string indexed _src, int256 indexed _nsn, string _next, string _event)
+func (_BMC *BMCFilterer) FilterBTPEvent(opts *bind.FilterOpts, _src []string, _nsn []*big.Int) (*BMCBTPEventIterator, error) {
 
-	logs, sub, err := _BMC.contract.FilterLogs(opts, "ErrorOnBTPError")
+	var _srcRule []interface{}
+	for _, _srcItem := range _src {
+		_srcRule = append(_srcRule, _srcItem)
+	}
+	var _nsnRule []interface{}
+	for _, _nsnItem := range _nsn {
+		_nsnRule = append(_nsnRule, _nsnItem)
+	}
+
+	logs, sub, err := _BMC.contract.FilterLogs(opts, "BTPEvent", _srcRule, _nsnRule)
 	if err != nil {
 		return nil, err
 	}
-	return &BMCErrorOnBTPErrorIterator{contract: _BMC.contract, event: "ErrorOnBTPError", logs: logs, sub: sub}, nil
+	return &BMCBTPEventIterator{contract: _BMC.contract, event: "BTPEvent", logs: logs, sub: sub}, nil
 }
 
-// WatchErrorOnBTPError is a free log subscription operation binding the contract event 0x45eab163faa71c8b113fcbc0dcc77bd39e7e3365be446895b5169bd97fc5522a.
+// WatchBTPEvent is a free log subscription operation binding the contract event 0x51f135d1c44e53689ca91af3b1bce4918d2b590d92bb76a854ab30e7de741828.
 //
-// Solidity: event ErrorOnBTPError(string _svc, int256 _sn, uint256 _code, string _errMsg, uint256 _svcErrCode, string _svcErrMsg)
-func (_BMC *BMCFilterer) WatchErrorOnBTPError(opts *bind.WatchOpts, sink chan<- *BMCErrorOnBTPError) (event.Subscription, error) {
+// Solidity: event BTPEvent(string indexed _src, int256 indexed _nsn, string _next, string _event)
+func (_BMC *BMCFilterer) WatchBTPEvent(opts *bind.WatchOpts, sink chan<- *BMCBTPEvent, _src []string, _nsn []*big.Int) (event.Subscription, error) {
 
-	logs, sub, err := _BMC.contract.WatchLogs(opts, "ErrorOnBTPError")
+	var _srcRule []interface{}
+	for _, _srcItem := range _src {
+		_srcRule = append(_srcRule, _srcItem)
+	}
+	var _nsnRule []interface{}
+	for _, _nsnItem := range _nsn {
+		_nsnRule = append(_nsnRule, _nsnItem)
+	}
+
+	logs, sub, err := _BMC.contract.WatchLogs(opts, "BTPEvent", _srcRule, _nsnRule)
 	if err != nil {
 		return nil, err
 	}
@@ -529,8 +698,8 @@ func (_BMC *BMCFilterer) WatchErrorOnBTPError(opts *bind.WatchOpts, sink chan<- 
 			select {
 			case log := <-logs:
 				// New log arrived, parse the event and forward to the user
-				event := new(BMCErrorOnBTPError)
-				if err := _BMC.contract.UnpackLog(event, "ErrorOnBTPError", log); err != nil {
+				event := new(BMCBTPEvent)
+				if err := _BMC.contract.UnpackLog(event, "BTPEvent", log); err != nil {
 					return err
 				}
 				event.Raw = log
@@ -551,12 +720,457 @@ func (_BMC *BMCFilterer) WatchErrorOnBTPError(opts *bind.WatchOpts, sink chan<- 
 	}), nil
 }
 
-// ParseErrorOnBTPError is a log parse operation binding the contract event 0x45eab163faa71c8b113fcbc0dcc77bd39e7e3365be446895b5169bd97fc5522a.
+// ParseBTPEvent is a log parse operation binding the contract event 0x51f135d1c44e53689ca91af3b1bce4918d2b590d92bb76a854ab30e7de741828.
 //
-// Solidity: event ErrorOnBTPError(string _svc, int256 _sn, uint256 _code, string _errMsg, uint256 _svcErrCode, string _svcErrMsg)
-func (_BMC *BMCFilterer) ParseErrorOnBTPError(log types.Log) (*BMCErrorOnBTPError, error) {
-	event := new(BMCErrorOnBTPError)
-	if err := _BMC.contract.UnpackLog(event, "ErrorOnBTPError", log); err != nil {
+// Solidity: event BTPEvent(string indexed _src, int256 indexed _nsn, string _next, string _event)
+func (_BMC *BMCFilterer) ParseBTPEvent(log types.Log) (*BMCBTPEvent, error) {
+	event := new(BMCBTPEvent)
+	if err := _BMC.contract.UnpackLog(event, "BTPEvent", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// BMCClaimRewardIterator is returned from FilterClaimReward and is used to iterate over the raw logs and unpacked data for ClaimReward events raised by the BMC contract.
+type BMCClaimRewardIterator struct {
+	Event *BMCClaimReward // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *BMCClaimRewardIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(BMCClaimReward)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(BMCClaimReward)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *BMCClaimRewardIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *BMCClaimRewardIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// BMCClaimReward represents a ClaimReward event raised by the BMC contract.
+type BMCClaimReward struct {
+	Sender   common.Address
+	Network  common.Hash
+	Receiver string
+	Amount   *big.Int
+	Nsn      *big.Int
+	Raw      types.Log // Blockchain specific contextual infos
+}
+
+// FilterClaimReward is a free log retrieval operation binding the contract event 0x92a1bf3ab6e4839bb58db5f99ae98936355e94c1223779807563d1a08a3bf449.
+//
+// Solidity: event ClaimReward(address indexed _sender, string indexed _network, string _receiver, uint256 _amount, int256 _nsn)
+func (_BMC *BMCFilterer) FilterClaimReward(opts *bind.FilterOpts, _sender []common.Address, _network []string) (*BMCClaimRewardIterator, error) {
+
+	var _senderRule []interface{}
+	for _, _senderItem := range _sender {
+		_senderRule = append(_senderRule, _senderItem)
+	}
+	var _networkRule []interface{}
+	for _, _networkItem := range _network {
+		_networkRule = append(_networkRule, _networkItem)
+	}
+
+	logs, sub, err := _BMC.contract.FilterLogs(opts, "ClaimReward", _senderRule, _networkRule)
+	if err != nil {
+		return nil, err
+	}
+	return &BMCClaimRewardIterator{contract: _BMC.contract, event: "ClaimReward", logs: logs, sub: sub}, nil
+}
+
+// WatchClaimReward is a free log subscription operation binding the contract event 0x92a1bf3ab6e4839bb58db5f99ae98936355e94c1223779807563d1a08a3bf449.
+//
+// Solidity: event ClaimReward(address indexed _sender, string indexed _network, string _receiver, uint256 _amount, int256 _nsn)
+func (_BMC *BMCFilterer) WatchClaimReward(opts *bind.WatchOpts, sink chan<- *BMCClaimReward, _sender []common.Address, _network []string) (event.Subscription, error) {
+
+	var _senderRule []interface{}
+	for _, _senderItem := range _sender {
+		_senderRule = append(_senderRule, _senderItem)
+	}
+	var _networkRule []interface{}
+	for _, _networkItem := range _network {
+		_networkRule = append(_networkRule, _networkItem)
+	}
+
+	logs, sub, err := _BMC.contract.WatchLogs(opts, "ClaimReward", _senderRule, _networkRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(BMCClaimReward)
+				if err := _BMC.contract.UnpackLog(event, "ClaimReward", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseClaimReward is a log parse operation binding the contract event 0x92a1bf3ab6e4839bb58db5f99ae98936355e94c1223779807563d1a08a3bf449.
+//
+// Solidity: event ClaimReward(address indexed _sender, string indexed _network, string _receiver, uint256 _amount, int256 _nsn)
+func (_BMC *BMCFilterer) ParseClaimReward(log types.Log) (*BMCClaimReward, error) {
+	event := new(BMCClaimReward)
+	if err := _BMC.contract.UnpackLog(event, "ClaimReward", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// BMCClaimRewardResultIterator is returned from FilterClaimRewardResult and is used to iterate over the raw logs and unpacked data for ClaimRewardResult events raised by the BMC contract.
+type BMCClaimRewardResultIterator struct {
+	Event *BMCClaimRewardResult // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *BMCClaimRewardResultIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(BMCClaimRewardResult)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(BMCClaimRewardResult)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *BMCClaimRewardResultIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *BMCClaimRewardResultIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// BMCClaimRewardResult represents a ClaimRewardResult event raised by the BMC contract.
+type BMCClaimRewardResult struct {
+	Sender  common.Address
+	Network common.Hash
+	Nsn     *big.Int
+	Result  *big.Int
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterClaimRewardResult is a free log retrieval operation binding the contract event 0xe4a536fde1966a83411167748abc5fbd80e0247bffe941ca4ddb5079fd730636.
+//
+// Solidity: event ClaimRewardResult(address indexed _sender, string indexed _network, int256 _nsn, uint256 _result)
+func (_BMC *BMCFilterer) FilterClaimRewardResult(opts *bind.FilterOpts, _sender []common.Address, _network []string) (*BMCClaimRewardResultIterator, error) {
+
+	var _senderRule []interface{}
+	for _, _senderItem := range _sender {
+		_senderRule = append(_senderRule, _senderItem)
+	}
+	var _networkRule []interface{}
+	for _, _networkItem := range _network {
+		_networkRule = append(_networkRule, _networkItem)
+	}
+
+	logs, sub, err := _BMC.contract.FilterLogs(opts, "ClaimRewardResult", _senderRule, _networkRule)
+	if err != nil {
+		return nil, err
+	}
+	return &BMCClaimRewardResultIterator{contract: _BMC.contract, event: "ClaimRewardResult", logs: logs, sub: sub}, nil
+}
+
+// WatchClaimRewardResult is a free log subscription operation binding the contract event 0xe4a536fde1966a83411167748abc5fbd80e0247bffe941ca4ddb5079fd730636.
+//
+// Solidity: event ClaimRewardResult(address indexed _sender, string indexed _network, int256 _nsn, uint256 _result)
+func (_BMC *BMCFilterer) WatchClaimRewardResult(opts *bind.WatchOpts, sink chan<- *BMCClaimRewardResult, _sender []common.Address, _network []string) (event.Subscription, error) {
+
+	var _senderRule []interface{}
+	for _, _senderItem := range _sender {
+		_senderRule = append(_senderRule, _senderItem)
+	}
+	var _networkRule []interface{}
+	for _, _networkItem := range _network {
+		_networkRule = append(_networkRule, _networkItem)
+	}
+
+	logs, sub, err := _BMC.contract.WatchLogs(opts, "ClaimRewardResult", _senderRule, _networkRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(BMCClaimRewardResult)
+				if err := _BMC.contract.UnpackLog(event, "ClaimRewardResult", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseClaimRewardResult is a log parse operation binding the contract event 0xe4a536fde1966a83411167748abc5fbd80e0247bffe941ca4ddb5079fd730636.
+//
+// Solidity: event ClaimRewardResult(address indexed _sender, string indexed _network, int256 _nsn, uint256 _result)
+func (_BMC *BMCFilterer) ParseClaimRewardResult(log types.Log) (*BMCClaimRewardResult, error) {
+	event := new(BMCClaimRewardResult)
+	if err := _BMC.contract.UnpackLog(event, "ClaimRewardResult", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// BMCInitializedIterator is returned from FilterInitialized and is used to iterate over the raw logs and unpacked data for Initialized events raised by the BMC contract.
+type BMCInitializedIterator struct {
+	Event *BMCInitialized // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *BMCInitializedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(BMCInitialized)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(BMCInitialized)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *BMCInitializedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *BMCInitializedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// BMCInitialized represents a Initialized event raised by the BMC contract.
+type BMCInitialized struct {
+	Version uint8
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterInitialized is a free log retrieval operation binding the contract event 0x7f26b83ff96e1f2b6a682f133852f6798a09c465da95921460cefb3847402498.
+//
+// Solidity: event Initialized(uint8 version)
+func (_BMC *BMCFilterer) FilterInitialized(opts *bind.FilterOpts) (*BMCInitializedIterator, error) {
+
+	logs, sub, err := _BMC.contract.FilterLogs(opts, "Initialized")
+	if err != nil {
+		return nil, err
+	}
+	return &BMCInitializedIterator{contract: _BMC.contract, event: "Initialized", logs: logs, sub: sub}, nil
+}
+
+// WatchInitialized is a free log subscription operation binding the contract event 0x7f26b83ff96e1f2b6a682f133852f6798a09c465da95921460cefb3847402498.
+//
+// Solidity: event Initialized(uint8 version)
+func (_BMC *BMCFilterer) WatchInitialized(opts *bind.WatchOpts, sink chan<- *BMCInitialized) (event.Subscription, error) {
+
+	logs, sub, err := _BMC.contract.WatchLogs(opts, "Initialized")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(BMCInitialized)
+				if err := _BMC.contract.UnpackLog(event, "Initialized", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseInitialized is a log parse operation binding the contract event 0x7f26b83ff96e1f2b6a682f133852f6798a09c465da95921460cefb3847402498.
+//
+// Solidity: event Initialized(uint8 version)
+func (_BMC *BMCFilterer) ParseInitialized(log types.Log) (*BMCInitialized, error) {
+	event := new(BMCInitialized)
+	if err := _BMC.contract.UnpackLog(event, "Initialized", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
@@ -632,7 +1246,7 @@ func (it *BMCMessageIterator) Close() error {
 
 // BMCMessage represents a Message event raised by the BMC contract.
 type BMCMessage struct {
-	Next string
+	Next common.Hash
 	Seq  *big.Int
 	Msg  []byte
 	Raw  types.Log // Blockchain specific contextual infos
@@ -640,10 +1254,19 @@ type BMCMessage struct {
 
 // FilterMessage is a free log retrieval operation binding the contract event 0x37be353f216cf7e33639101fd610c542e6a0c0109173fa1c1d8b04d34edb7c1b.
 //
-// Solidity: event Message(string _next, uint256 _seq, bytes _msg)
-func (_BMC *BMCFilterer) FilterMessage(opts *bind.FilterOpts) (*BMCMessageIterator, error) {
+// Solidity: event Message(string indexed _next, uint256 indexed _seq, bytes _msg)
+func (_BMC *BMCFilterer) FilterMessage(opts *bind.FilterOpts, _next []string, _seq []*big.Int) (*BMCMessageIterator, error) {
 
-	logs, sub, err := _BMC.contract.FilterLogs(opts, "Message")
+	var _nextRule []interface{}
+	for _, _nextItem := range _next {
+		_nextRule = append(_nextRule, _nextItem)
+	}
+	var _seqRule []interface{}
+	for _, _seqItem := range _seq {
+		_seqRule = append(_seqRule, _seqItem)
+	}
+
+	logs, sub, err := _BMC.contract.FilterLogs(opts, "Message", _nextRule, _seqRule)
 	if err != nil {
 		return nil, err
 	}
@@ -652,10 +1275,19 @@ func (_BMC *BMCFilterer) FilterMessage(opts *bind.FilterOpts) (*BMCMessageIterat
 
 // WatchMessage is a free log subscription operation binding the contract event 0x37be353f216cf7e33639101fd610c542e6a0c0109173fa1c1d8b04d34edb7c1b.
 //
-// Solidity: event Message(string _next, uint256 _seq, bytes _msg)
-func (_BMC *BMCFilterer) WatchMessage(opts *bind.WatchOpts, sink chan<- *BMCMessage) (event.Subscription, error) {
+// Solidity: event Message(string indexed _next, uint256 indexed _seq, bytes _msg)
+func (_BMC *BMCFilterer) WatchMessage(opts *bind.WatchOpts, sink chan<- *BMCMessage, _next []string, _seq []*big.Int) (event.Subscription, error) {
 
-	logs, sub, err := _BMC.contract.WatchLogs(opts, "Message")
+	var _nextRule []interface{}
+	for _, _nextItem := range _next {
+		_nextRule = append(_nextRule, _nextItem)
+	}
+	var _seqRule []interface{}
+	for _, _seqItem := range _seq {
+		_seqRule = append(_seqRule, _seqItem)
+	}
+
+	logs, sub, err := _BMC.contract.WatchLogs(opts, "Message", _nextRule, _seqRule)
 	if err != nil {
 		return nil, err
 	}
@@ -689,10 +1321,166 @@ func (_BMC *BMCFilterer) WatchMessage(opts *bind.WatchOpts, sink chan<- *BMCMess
 
 // ParseMessage is a log parse operation binding the contract event 0x37be353f216cf7e33639101fd610c542e6a0c0109173fa1c1d8b04d34edb7c1b.
 //
-// Solidity: event Message(string _next, uint256 _seq, bytes _msg)
+// Solidity: event Message(string indexed _next, uint256 indexed _seq, bytes _msg)
 func (_BMC *BMCFilterer) ParseMessage(log types.Log) (*BMCMessage, error) {
 	event := new(BMCMessage)
 	if err := _BMC.contract.UnpackLog(event, "Message", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// BMCMessageDroppedIterator is returned from FilterMessageDropped and is used to iterate over the raw logs and unpacked data for MessageDropped events raised by the BMC contract.
+type BMCMessageDroppedIterator struct {
+	Event *BMCMessageDropped // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *BMCMessageDroppedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(BMCMessageDropped)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(BMCMessageDropped)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *BMCMessageDroppedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *BMCMessageDroppedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// BMCMessageDropped represents a MessageDropped event raised by the BMC contract.
+type BMCMessageDropped struct {
+	Prev  common.Hash
+	Seq   *big.Int
+	Msg   []byte
+	Ecode *big.Int
+	Emsg  string
+	Raw   types.Log // Blockchain specific contextual infos
+}
+
+// FilterMessageDropped is a free log retrieval operation binding the contract event 0x35348898083dc8da7eb4e604320d7cc250732cc1f584d2596f670b5d6bab8de5.
+//
+// Solidity: event MessageDropped(string indexed _prev, uint256 indexed _seq, bytes _msg, uint256 _ecode, string _emsg)
+func (_BMC *BMCFilterer) FilterMessageDropped(opts *bind.FilterOpts, _prev []string, _seq []*big.Int) (*BMCMessageDroppedIterator, error) {
+
+	var _prevRule []interface{}
+	for _, _prevItem := range _prev {
+		_prevRule = append(_prevRule, _prevItem)
+	}
+	var _seqRule []interface{}
+	for _, _seqItem := range _seq {
+		_seqRule = append(_seqRule, _seqItem)
+	}
+
+	logs, sub, err := _BMC.contract.FilterLogs(opts, "MessageDropped", _prevRule, _seqRule)
+	if err != nil {
+		return nil, err
+	}
+	return &BMCMessageDroppedIterator{contract: _BMC.contract, event: "MessageDropped", logs: logs, sub: sub}, nil
+}
+
+// WatchMessageDropped is a free log subscription operation binding the contract event 0x35348898083dc8da7eb4e604320d7cc250732cc1f584d2596f670b5d6bab8de5.
+//
+// Solidity: event MessageDropped(string indexed _prev, uint256 indexed _seq, bytes _msg, uint256 _ecode, string _emsg)
+func (_BMC *BMCFilterer) WatchMessageDropped(opts *bind.WatchOpts, sink chan<- *BMCMessageDropped, _prev []string, _seq []*big.Int) (event.Subscription, error) {
+
+	var _prevRule []interface{}
+	for _, _prevItem := range _prev {
+		_prevRule = append(_prevRule, _prevItem)
+	}
+	var _seqRule []interface{}
+	for _, _seqItem := range _seq {
+		_seqRule = append(_seqRule, _seqItem)
+	}
+
+	logs, sub, err := _BMC.contract.WatchLogs(opts, "MessageDropped", _prevRule, _seqRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(BMCMessageDropped)
+				if err := _BMC.contract.UnpackLog(event, "MessageDropped", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseMessageDropped is a log parse operation binding the contract event 0x35348898083dc8da7eb4e604320d7cc250732cc1f584d2596f670b5d6bab8de5.
+//
+// Solidity: event MessageDropped(string indexed _prev, uint256 indexed _seq, bytes _msg, uint256 _ecode, string _emsg)
+func (_BMC *BMCFilterer) ParseMessageDropped(log types.Log) (*BMCMessageDropped, error) {
+	event := new(BMCMessageDropped)
+	if err := _BMC.contract.UnpackLog(event, "MessageDropped", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log
