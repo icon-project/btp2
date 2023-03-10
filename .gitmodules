@@ -1,6 +1,8 @@
 [submodule "javascore"]
 	path = javascore
 	url = https://github.com/icon-project/btp2-java.git
+	branch = jspark-BDT-442
 [submodule "solidity"]
 	path = solidity
 	url = https://github.com/icon-project/btp2-solidity.git
+	branch = jspark-BDT-438
