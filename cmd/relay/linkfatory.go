@@ -24,7 +24,7 @@ func NewLink(cfg *Config, srcWallet wallet.Wallet, dstWallet wallet.Wallet, modL
 		srcLog := setLogger(cfg, srcWallet, modLevels)
 		srcLog.Debugln(cfg.FilePath, cfg.BaseDir)
 		if cfg.BaseDir == "" {
-			cfg.BaseDir = path.Join(".", ".btp2", cfg.Src.Address.NetworkAddress())
+			cfg.BaseDir = path.Join(".", ".relay", cfg.Src.Address.NetworkAddress())
 		}
 		if _, err = newLink(cfg.Src.Address.BlockChain(), cfg.Config, srcLog, dstWallet, linkErrCh); err != nil {
 			return err
@@ -39,7 +39,7 @@ func NewLink(cfg *Config, srcWallet wallet.Wallet, dstWallet wallet.Wallet, modL
 		dstLog := setLogger(cfg, dstWallet, modLevels)
 		dstLog.Debugln(cfg.FilePath, cfg.BaseDir)
 		if cfg.BaseDir == "" {
-			cfg.BaseDir = path.Join(".", ".btp2", cfg.Dst.Address.NetworkAddress())
+			cfg.BaseDir = path.Join(".", ".relay", cfg.Dst.Address.NetworkAddress())
 		}
 		if _, err = newLink(cfg.Dst.Address.BlockChain(), dstCfg, dstLog, srcWallet, linkErrCh); err != nil {
 			return err
@@ -48,7 +48,7 @@ func NewLink(cfg *Config, srcWallet wallet.Wallet, dstWallet wallet.Wallet, modL
 		srcLog := setLogger(cfg, srcWallet, modLevels)
 		srcLog.Debugln(cfg.FilePath, cfg.BaseDir)
 		if cfg.BaseDir == "" {
-			cfg.BaseDir = path.Join(".", ".btp2", cfg.Src.Address.NetworkAddress())
+			cfg.BaseDir = path.Join(".", ".relay", cfg.Src.Address.NetworkAddress())
 		}
 		if _, err = newLink(cfg.Src.Address.BlockChain(), cfg.Config, srcLog, dstWallet, linkErrCh); err != nil {
 			return err
@@ -62,7 +62,7 @@ func NewLink(cfg *Config, srcWallet wallet.Wallet, dstWallet wallet.Wallet, modL
 		dstLog := setLogger(cfg, dstWallet, modLevels)
 		dstLog.Debugln(cfg.FilePath, cfg.BaseDir)
 		if cfg.BaseDir == "" {
-			cfg.BaseDir = path.Join(".", ".btp2", cfg.Dst.Address.NetworkAddress())
+			cfg.BaseDir = path.Join(".", ".relay", cfg.Dst.Address.NetworkAddress())
 		}
 		if _, err = newLink(dstCfg.Src.Address.BlockChain(), dstCfg, dstLog, srcWallet, linkErrCh); err != nil {
 			return err
