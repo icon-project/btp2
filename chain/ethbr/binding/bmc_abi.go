@@ -36,17 +36,3 @@ func UnpackEventLog(data []byte) (*BMCMessage, error) {
 	}
 	return &message, nil
 }
-
-//func UnpackEventLog(data []byte) ([]byte, error) {
-//	bmcABI, err := abi.JSON(strings.NewReader(string(_ABI)))
-//	if err != nil {
-//		return nil, err
-//	}
-//	//var message []byte
-//	var message interface{}
-//	err = bmcABI.UnpackIntoInterface(message, "Message", data)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return nil, nil
-//}
