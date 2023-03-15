@@ -37,11 +37,52 @@ const (
 	DefaultGetRelayResultInterval = time.Second
 	DefaultRelayReSendInterval    = time.Second
 	DefaultStepLimit              = 0x9502f900 //maxStepLimit(invoke), refer https://www.icondev.io/docs/step-estimation
+	MaxQueueSize                  = 10
 )
 
 var (
 	txSizeLimit = int(math.Ceil(txMaxDataSize / (1 + txOverheadScale)))
 )
+
+type Queue struct {
+	values []types.RelayMessage
+}
+
+func NewQueue() *Queue {
+	queue := &Queue{}
+	return queue
+}
+
+func (q *Queue) enqueue(rm types.RelayMessage) error {
+	if MaxQueueSize <= len(q.values) {
+		return fmt.Errorf("queue full")
+	}
+	q.values = append(q.values, rm)
+	return nil
+}
+
+func (q *Queue) dequeue(id int) types.RelayMessage {
+	var val types.RelayMessage
+	if q.isEmpty() {
+		return nil
+	}
+	for i, rm := range q.values {
+		if rm.Id() != id {
+			val = q.values[i]
+			q.values = q.values[i+1:]
+		}
+	}
+
+	return val
+}
+
+func (q *Queue) isEmpty() bool {
+	return len(q.values) == 0
+}
+
+func (q *Queue) len() int {
+	return len(q.values)
+}
 
 type sender struct {
 	c   *client.Client
@@ -54,15 +95,18 @@ type sender struct {
 	}
 	sc                 chan types.SenderMessage
 	isFoundOffsetBySeq bool
+	//TODO add queue
+	queue *Queue
 }
 
 func NewSender(src, dst types.BtpAddress, w client.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) types.Sender {
 	s := &sender{
-		src: src,
-		dst: dst,
-		w:   w,
-		l:   l,
-		sc:  make(chan types.SenderMessage),
+		src:   src,
+		dst:   dst,
+		w:     w,
+		l:     l,
+		sc:    make(chan types.SenderMessage),
+		queue: NewQueue(),
 	}
 	b, err := json.Marshal(opt)
 	if err != nil {
@@ -87,7 +131,14 @@ func (s *sender) Stop() {
 }
 
 func (s *sender) Relay(rm types.RelayMessage) (int, error) {
+	//check send queue
+	if MaxQueueSize <= s.queue.len() {
+		return 0, errors.InvalidStateError.New("pending queue full")
+	}
+	s.queue.enqueue(rm)
+
 	thp, err := s._relay(rm)
+
 	if err != nil {
 		return 0, err
 	}
@@ -129,6 +180,8 @@ func (s *sender) _relay(rm types.RelayMessage) (*client.TransactionHashParam, er
 
 func (s *sender) result(id int, txh *client.TransactionHashParam) {
 	_, err := s.GetResult(txh)
+	s.queue.dequeue(id)
+
 	if err != nil {
 		s.l.Debugf("result fail rm id : %d ", id)
 

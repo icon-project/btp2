@@ -18,7 +18,6 @@ import (
 type receiveStatus struct {
 	height int64
 	seq    int64
-	mt     *mbt.MerkleBinaryTree
 }
 
 func (r *receiveStatus) Height() int64 {
@@ -29,29 +28,10 @@ func (r *receiveStatus) Seq() int64 {
 	return r.seq
 }
 
-func (r *receiveStatus) MerkleBinaryTree() *mbt.MerkleBinaryTree {
-	return r.mt
-}
-
-func newReceiveStatus(height, seq int64, msgs []string) (*receiveStatus, error) {
-	result := make([][]byte, 0)
-	for _, mg := range msgs {
-		m, err := base64.StdEncoding.DecodeString(mg)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, m)
-	}
-
-	mt, err := mbt.NewMerkleBinaryTree(mbt.HashFuncByUID("eth"), result)
-	if err != nil {
-		return nil, err
-	}
-
+func newReceiveStatus(height, seq int64) (*receiveStatus, error) {
 	return &receiveStatus{
 		height: height,
 		seq:    seq,
-		mt:     mt,
 	}, nil
 
 }
@@ -196,14 +176,20 @@ func (b *btp2) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.Me
 	if rs == nil {
 		return nil, nil
 	}
-	messageCnt := int64(rs.MerkleBinaryTree().Len())
+
+	mbt, err := b.getMessage(bls.Verifier.Height)
+	if err != nil {
+		return nil, err
+	}
+
+	messageCnt := int64(mbt.Len())
 	offset := bls.RxSeq - (rs.Seq() - messageCnt)
 	if (bls.RxSeq - rs.seq) == 0 {
 		return nil, nil
 	}
 	if messageCnt > 0 {
 		for i := offset + 1; i < messageCnt; i++ {
-			p, err := rs.MerkleBinaryTree().Proof(int(offset+1), int(i))
+			p, err := mbt.Proof(int(offset+1), int(i))
 			if err != nil {
 				return nil, err
 			}
@@ -215,7 +201,7 @@ func (b *btp2) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.Me
 		}
 	}
 
-	p, err := rs.MerkleBinaryTree().Proof(int(offset+1), int(messageCnt))
+	p, err := mbt.Proof(int(offset+1), int(messageCnt))
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +237,27 @@ func (b *btp2) updateReceiveStatus(bls *types.BMCLinkStatus) {
 			return
 		}
 	}
+}
+
+func (b *btp2) getMessage(height int64) (*mbt.MerkleBinaryTree, error) {
+	msgs, err := b.getBtpMessage(height)
+	if err != nil {
+		return nil, err
+	}
+	result := make([][]byte, 0)
+	for _, mg := range msgs {
+		m, err := base64.StdEncoding.DecodeString(mg)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, m)
+	}
+
+	mt, err := mbt.NewMerkleBinaryTree(mbt.HashFuncByUID("eth"), result)
+	if err != nil {
+		return nil, err
+	}
+	return mt, nil
 }
 
 func (b *btp2) Monitoring(bls *types.BMCLinkStatus) error {
@@ -313,7 +320,7 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 			}
 
 			b.seq += int64(len(msgs))
-			rs, err := newReceiveStatus(bh.MainHeight, b.seq, msgs)
+			rs, err := newReceiveStatus(bh.MainHeight, b.seq)
 			if err != nil {
 				return err
 			}
