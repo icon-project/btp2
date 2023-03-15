@@ -130,7 +130,6 @@ func (b *bridge) GetHeightForSeq(seq int64) int64 {
 }
 
 func (b *bridge) BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
-	b.updateReceiveStatus(bls)
 	bus := make([]link.BlockUpdate, 0)
 	for _, rs := range b.rss {
 		bu := NewBlockUpdate(bls, rs.Height())
@@ -184,6 +183,9 @@ func (b *bridge) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error)
 		}
 	}
 	return nil, nil
+}
+
+func (b *bridge) FinalizedStatus(bls <-chan *types.BMCLinkStatus) {
 }
 
 //TODO Refactoring reduplication func

@@ -53,7 +53,7 @@ type sender struct {
 	opt struct {
 	}
 	bmc                *binding.BMC
-	sc                 chan btpTypes.SenderMessage
+	rr                 chan btpTypes.RelayResult
 	isFoundOffsetBySeq bool
 }
 
@@ -63,7 +63,7 @@ func NewSender(src, dst btpTypes.BtpAddress, w client.Wallet, endpoint string, o
 		dst: dst,
 		w:   w,
 		l:   l,
-		sc:  make(chan btpTypes.SenderMessage),
+		rr:  make(chan btpTypes.RelayResult),
 	}
 
 	b, err := json.Marshal(opt)
@@ -81,12 +81,12 @@ func NewSender(src, dst btpTypes.BtpAddress, w client.Wallet, endpoint string, o
 	return s
 }
 
-func (s *sender) Start() (<-chan btpTypes.SenderMessage, error) {
-	return s.sc, nil
+func (s *sender) Start() (<-chan btpTypes.RelayResult, error) {
+	return s.rr, nil
 }
 
 func (s *sender) Stop() {
-	close(s.sc)
+	close(s.rr)
 }
 func (s *sender) GetStatus() (*btpTypes.BMCLinkStatus, error) {
 	var status binding.TypesLinkStatus
@@ -103,11 +103,6 @@ func (s *sender) GetStatus() (*btpTypes.BMCLinkStatus, error) {
 	ls.Verifier.Extra = status.Verifier.Extra
 
 	return ls, nil
-}
-
-func (s *sender) SendStatus() {
-	bs, _ := s.GetStatus()
-	s.sc <- bs
 }
 
 func (s *sender) GetMarginForLimit() int64 {
@@ -129,7 +124,7 @@ func (s *sender) result(id int, txh *client.TransactionHashParam) {
 		s.l.Debugf("result fail rm id : %d ", id)
 
 		if ec, ok := errors.CoderOf(err); ok {
-			s.sc <- &btpTypes.RelayResult{
+			s.rr <- btpTypes.RelayResult{
 				Id:  id,
 				Err: ec.ErrorCode(),
 			}
@@ -138,7 +133,6 @@ func (s *sender) result(id int, txh *client.TransactionHashParam) {
 		s.l.Debugf("result success rm id : %d ", id)
 	}
 
-	s.SendStatus()
 }
 
 func (s *sender) GetResult(txh *client.TransactionHashParam) (*types.Receipt, error) {

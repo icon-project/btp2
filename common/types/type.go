@@ -51,15 +51,13 @@ type BMCLinkStatus struct {
 }
 
 type RelayResult struct {
-	Id  int
-	Err errors.Code
+	Id        int
+	Err       errors.Code
+	Finalized bool
 }
 
-// BMCLinkStatus, RelayResult
-type SenderMessage interface{}
-
 type Sender interface {
-	Start() (<-chan SenderMessage, error)
+	Start() (<-chan RelayResult, error)
 	Stop()
 	GetStatus() (*BMCLinkStatus, error)
 	Relay(rm RelayMessage) (int, error)

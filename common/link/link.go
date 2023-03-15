@@ -154,16 +154,8 @@ func (l *Link) senderChannel(errCh chan error) {
 		for {
 			select {
 			case sc := <-scc:
-				switch t := sc.(type) {
-				case *types.RelayResult:
-					err := l.result(t)
-					errCh <- err
-				case *types.BMCLinkStatus:
-					l.clearRelayMessage(t)
-					l.clearReceiveStatus(t)
-				default:
-					//TODO exception
-				}
+				err := l.result(sc)
+				errCh <- err
 			}
 		}
 
@@ -452,7 +444,7 @@ func (l *Link) createRelayMessageItem() {
 	l.rmi.size = 0
 }
 
-func (l *Link) result(rr *types.RelayResult) error {
+func (l *Link) result(rr types.RelayResult) error {
 	l.rmsMtx.Lock()
 	defer l.rmsMtx.Lock()
 

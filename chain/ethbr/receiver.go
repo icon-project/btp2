@@ -178,6 +178,10 @@ func (e *ethbr) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error) 
 	return nil, nil
 }
 
+func (e *ethbr) FinalizedStatus(bls <-chan *btpTypes.BMCLinkStatus) {
+
+}
+
 func (e *ethbr) updateReceiveStatus(bls *btpTypes.BMCLinkStatus) {
 	for i, rs := range e.rss {
 		if rs.Height() <= bls.Verifier.Height && rs.Seq() <= bls.RxSeq {

@@ -52,7 +52,7 @@ type sender struct {
 	opt struct {
 		StepLimit int64
 	}
-	sc                 chan types.SenderMessage
+	sc                 chan types.RelayResult
 	isFoundOffsetBySeq bool
 }
 
@@ -62,7 +62,7 @@ func NewSender(src, dst types.BtpAddress, w client.Wallet, endpoint string, opt 
 		dst: dst,
 		w:   w,
 		l:   l,
-		sc:  make(chan types.SenderMessage),
+		sc:  make(chan types.RelayResult),
 	}
 	b, err := json.Marshal(opt)
 	if err != nil {
@@ -78,7 +78,7 @@ func NewSender(src, dst types.BtpAddress, w client.Wallet, endpoint string, opt 
 	return s
 }
 
-func (s *sender) Start() (<-chan types.SenderMessage, error) {
+func (s *sender) Start() (<-chan types.RelayResult, error) {
 	return s.sc, nil
 }
 
@@ -133,7 +133,7 @@ func (s *sender) result(id int, txh *client.TransactionHashParam) {
 		s.l.Debugf("result fail rm id : %d ", id)
 
 		if ec, ok := errors.CoderOf(err); ok {
-			s.sc <- &types.RelayResult{
+			s.sc <- types.RelayResult{
 				Id:  id,
 				Err: ec.ErrorCode(),
 			}
@@ -141,12 +141,6 @@ func (s *sender) result(id int, txh *client.TransactionHashParam) {
 	} else {
 		s.l.Debugf("result success rm id : %d ", id)
 	}
-	s.SendStatus()
-}
-
-func (s *sender) SendStatus() {
-	bs, _ := s.GetStatus()
-	s.sc <- bs
 }
 
 func (s *sender) TxSizeLimit() int {

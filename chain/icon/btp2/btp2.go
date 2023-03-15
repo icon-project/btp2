@@ -244,6 +244,10 @@ func (b *btp2) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error) {
 	return rb, nil
 }
 
+func (b *btp2) FinalizedStatus(bls <-chan *types.BMCLinkStatus) {
+
+}
+
 func (b *btp2) updateReceiveStatus(bls *types.BMCLinkStatus) {
 	for i, rs := range b.rss {
 		if rs.Height() <= bls.Verifier.Height && rs.Seq() <= bls.RxSeq {
