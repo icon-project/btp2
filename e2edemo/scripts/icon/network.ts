@@ -2,7 +2,7 @@ import IconService from 'icon-sdk-js';
 import Wallet from "icon-sdk-js/build/Wallet";
 
 const {IconWallet, HttpProvider} = IconService;
-const {E2E_DEMO_PATH} = process.env;
+const {PWD} = process.env;
 
 export class IconNetwork {
   iconService: IconService;
@@ -20,7 +20,7 @@ export class IconNetwork {
     if (!this.instance) {
       const httpProvider = new HttpProvider('http://localhost:9080/api/v3');
       const iconService = new IconService(httpProvider);
-      const keystore = require(`${E2E_DEMO_PATH}/docker/icon/config/keystore.json`);
+      const keystore = require(`${PWD}/docker/icon/config/keystore.json`);
       const wallet = IconWallet.loadKeystore(keystore, 'gochain', false);
       this.instance = new this(iconService, 3, wallet);
     }

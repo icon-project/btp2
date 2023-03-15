@@ -3,15 +3,15 @@ import {ethers} from 'hardhat';
 import {Contract} from "./icon/contract";
 import {IconNetwork} from "./icon/network";
 import {Deployments} from "./setup/config";
-const {E2E_DEMO_PATH} = process.env
 
+const {PWD} = process.env
 const deployments = Deployments.getDefault();
 const iconNetwork = IconNetwork.getDefault();
 
 async function deploy_dapp() {
   // deploy DApp java
   const icon = deployments.get('icon')
-  const dappJar = E2E_DEMO_PATH + '/dapp-sample/build/libs/dapp-sample-0.1.0-optimized.jar'
+  const dappJar = `${PWD}/dapp-sample/build/libs/dapp-sample-0.1.0-optimized.jar`
   const content = fs.readFileSync(dappJar).toString('hex')
   const dapp = new Contract(iconNetwork)
   const deployTxHash = await dapp.deploy({

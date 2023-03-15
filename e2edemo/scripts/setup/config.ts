@@ -1,6 +1,6 @@
 import fs from 'fs';
-const {E2E_DEMO_PATH} = process.env
-const DEPLOYMENTS_PATH = `${E2E_DEMO_PATH}/deployments.json`
+const {PWD} = process.env
+const DEPLOYMENTS_PATH = `${PWD}/deployments.json`
 
 export class Deployments {
   map: Map<string, any>;

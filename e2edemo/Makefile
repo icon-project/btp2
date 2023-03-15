@@ -58,25 +58,21 @@ build-all: compile build-bmc-java build-bmv-java build-xcall-java build-dapp-jav
 
 deploy-bmc:
 	@ echo ">>> Deploy BMC contracts" ; \
-	E2E_DEMO_PATH=$(PWD) \
 	JAVASCORE_PATH=$(JAVASCORE_PATH) \
 	$(HARDHAT) $(NETWORK) run scripts/setup/deploy_bmc.ts
 
 deploy-bmv:
 	@ echo ">>> Deploy BMV contracts" ; \
-	E2E_DEMO_PATH=$(PWD) \
 	JAVASCORE_PATH=$(JAVASCORE_PATH) \
 	$(HARDHAT) $(NETWORK) run scripts/setup/deploy_bmv.ts
 
 deploy-xcall:
 	@ echo ">>> Deploy xCall contracts" ; \
-	E2E_DEMO_PATH=$(PWD) \
 	JAVASCORE_PATH=$(JAVASCORE_PATH) \
 	$(HARDHAT) $(NETWORK) run scripts/setup/deploy_xcall.ts
 
 deploy-dapp:
 	@ echo ">>> Deploy DApp contracts" ; \
-	E2E_DEMO_PATH=$(PWD) \
 	$(HARDHAT) $(NETWORK) run scripts/deploy_dapp.ts
 
 deploy-all: deploy-bmc deploy-bmv deploy-xcall deploy-dapp
@@ -93,10 +89,8 @@ stop-nodes:
 
 setup-node:
 	@ echo ">>> Setup ICON node" ; \
-	E2E_DEMO_PATH=$(PWD) \
 	$(TS_NODE) scripts/setup/setup_node.ts
 
 run-demo:
 	@ echo ">>> Run demo_dapp.ts " ; \
-	E2E_DEMO_PATH=$(PWD) \
 	$(HARDHAT) $(NETWORK) run scripts/demo_dapp.ts
