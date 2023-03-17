@@ -100,14 +100,14 @@ Multiple terminal windows are required to complete these next steps.
 Open a terminal window and run the following command to start the relay.
 
 ```
-./relay.sh hardhat
+./relay.sh
 ```
 
 
 > **Note**
 > If you deployed BMV for Bridge in the previous step, add `BMV_BRIDGE=true` environment variable as follows.
 > ```
-> BMV_BRIDGE=true ./relay.sh hardhat
+> BMV_BRIDGE=true ./relay.sh
 > ```
 
 You can now run the demo scenario script via the following command.

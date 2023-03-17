@@ -43,7 +43,8 @@ build-bmc-java:
 build-bmv-java:
 	@ echo ">>> Build BMV javascore" ; \
 	cd $(JAVASCORE_PATH) ; \
-	$(GRADLE) bmv:bridge:optimizedJar
+	$(GRADLE) bmv:bridge:optimizedJar \
+		bmv:btpblock:optimizedJar
 
 build-xcall-java:
 	@ echo ">>> Build xCall javascore" ; \
