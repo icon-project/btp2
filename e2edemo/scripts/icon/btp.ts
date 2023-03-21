@@ -67,3 +67,7 @@ export class BMV extends Contract {
     super(_iconNetwork, _address)
   }
 }
+
+export function getBtpAddress(network: string, dapp: string) {
+  return `btp://${network}/${dapp}`;
+}
