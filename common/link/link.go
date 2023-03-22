@@ -289,7 +289,6 @@ func (l *Link) buildProof(bls *types.BMCLinkStatus, bu BlockUpdate) error {
 	if rs == nil {
 		return nil
 	}
-	var mh int64
 	for {
 		//TODO refactoring
 		if rs.Seq() <= bls.RxSeq {
@@ -298,9 +297,7 @@ func (l *Link) buildProof(bls *types.BMCLinkStatus, bu BlockUpdate) error {
 		if l.isOverLimit(l.rmi.size) {
 			l.sendRelayMessage(bls)
 			if bu != nil || bu.ProofHeight() != 0 {
-				h := l.r.GetHeightForSeq(bls.RxSeq)
-				mh = h
-				if err := l.buildBlockProof(bls, mh); err != nil {
+				if err := l.buildBlockProof(bls); err != nil {
 					return err
 				}
 			}
@@ -309,12 +306,8 @@ func (l *Link) buildProof(bls *types.BMCLinkStatus, bu BlockUpdate) error {
 			}
 		} else {
 			if bu == nil || bu.ProofHeight() == -1 {
-				h := l.r.GetHeightForSeq(bls.RxSeq)
-				mh = h
-				if mh != h {
-					if err := l.buildBlockProof(bls, mh); err != nil {
-						return err
-					}
+				if err := l.buildBlockProof(bls); err != nil {
+					return err
 				}
 			}
 			if err := l.buildMessageProof(bls); err != nil {
@@ -349,8 +342,9 @@ func (l *Link) buildMessageProof(bls *types.BMCLinkStatus) error {
 	return nil
 }
 
-func (l *Link) buildBlockProof(bls *types.BMCLinkStatus, height int64) error {
-	bf, err := l.r.BuildBlockProof(bls, height)
+func (l *Link) buildBlockProof(bls *types.BMCLinkStatus) error {
+	h := l.r.GetHeightForSeq(bls.RxSeq)
+	bf, err := l.r.BuildBlockProof(bls, h)
 	if err != nil {
 		return err
 	}
@@ -384,7 +378,7 @@ func (l *Link) appendRelayMessage(bls *types.BMCLinkStatus) ([]*relayMessage, er
 		rms = append(rms, rm)
 	}
 	l.rmi.rmis = l.rmi.rmis[:0]
-	l.rmi.size = 0
+	l.createRelayMessageItem()
 
 	return rms, nil
 }
