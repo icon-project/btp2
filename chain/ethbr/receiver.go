@@ -18,6 +18,7 @@ import (
 	"github.com/icon-project/btp2/chain/ethbr/binding"
 	"github.com/icon-project/btp2/chain/ethbr/client"
 	"github.com/icon-project/btp2/common/codec"
+	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	btpTypes "github.com/icon-project/btp2/common/types"
@@ -94,12 +95,15 @@ func (e *ethbr) GetStatus() (link.ReceiveStatus, error) {
 }
 
 func (e *ethbr) BuildBlockUpdate(bls *btpTypes.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
-	e.updateReceiveStatus(bls)
 	bus := make([]link.BlockUpdate, 0)
-	for _, rs := range e.rss {
-		bu := NewBlockUpdate(bls, rs.Height())
-		bus = append(bus, bu)
+	rs := e.nextReceiveStatus(bls)
+	if rs == nil {
+		//TODO exception message
+		return nil, errors.IllegalArgumentError.New("No blockUpdate available to create.")
 	}
+
+	bu := NewBlockUpdate(bls, rs.Height())
+	bus = append(bus, bu)
 	return bus, nil
 }
 
@@ -110,6 +114,7 @@ func (e *ethbr) BuildBlockProof(bls *btpTypes.BMCLinkStatus, height int64) (link
 func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (link.MessageProof, error) {
 	var rmSize int
 	var seq int
+
 	rps := make([]*client.ReceiptProof, 0)
 	rs := e.GetReceiveHeightForSequence(bls.RxSeq + 1)
 	e.l.Debugf("OnBlockOfSrc rpsCnt:%d rxSeq:%d", len(rs.rps), rs.Seq())
@@ -169,7 +174,6 @@ func (e *ethbr) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error) 
 	for _, rmi := range rmis {
 		if rmi.Type() == link.TypeMessageProof {
 			mp := rmi.(*MessageProof)
-			//TODO for test
 			e.l.Debugf("BuildRelayMessage height:%d data:%s ", mp.nextBls.Verifier.Height,
 				base64.URLEncoding.EncodeToString(mp.Bytes()))
 			return mp.Bytes(), nil
@@ -178,13 +182,33 @@ func (e *ethbr) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error) 
 	return nil, nil
 }
 
-func (e *ethbr) FinalizedStatus(bls <-chan *btpTypes.BMCLinkStatus) {
-
+func (e *ethbr) FinalizedStatus(blsc <-chan *btpTypes.BMCLinkStatus) {
+	go func() {
+		for {
+			select {
+			case bls := <-blsc:
+				e.clearReceiveStatus(bls)
+			}
+		}
+	}()
 }
 
-func (e *ethbr) updateReceiveStatus(bls *btpTypes.BMCLinkStatus) {
+func (e *ethbr) nextReceiveStatus(bls *btpTypes.BMCLinkStatus) *receiveStatus {
+	for i, rs := range e.rss {
+		if bls.Verifier.Height <= rs.Height() {
+			if bls.Verifier.Height == rs.Height() {
+				return e.rss[i+1]
+			}
+			return e.rss[i]
+		}
+	}
+	return nil
+}
+
+func (e *ethbr) clearReceiveStatus(bls *btpTypes.BMCLinkStatus) {
 	for i, rs := range e.rss {
 		if rs.Height() <= bls.Verifier.Height && rs.Seq() <= bls.RxSeq {
+			e.l.Debugf("clear receive data (height:%d, seq:%d) ", bls.Verifier.Height, bls.RxSeq)
 			e.rss = e.rss[i+1:]
 			return
 		}
@@ -197,7 +221,6 @@ func (e *ethbr) Monitoring(bs *btpTypes.BMCLinkStatus) error {
 		Addresses: []common.Address{common.HexToAddress(e.src.ContractAddress())},
 		Topics: [][]common.Hash{
 			{crypto.Keccak256Hash([]byte(EventSignature))},
-			//{crypto.Keccak256Hash([]byte(r.dst.String()))}, //if 'next' is indexed
 		},
 	}
 	e.l.Debugf("ReceiveLoop height:%d seq:%d filterQuery[Address:%s,Topic:%s]",
@@ -219,8 +242,8 @@ func (e *ethbr) Monitoring(bs *btpTypes.BMCLinkStatus) error {
 				for _, el := range v.Logs {
 					evt, err := logToEvent(&el)
 
-					e.l.Debugf("event[seq:%d next:%s] seq:%d dst:%s",
-						evt.Sequence, evt.Next, e.seq, e.dst.String())
+					e.l.Debugf("event[seq:%d] seq:%d dst:%s",
+						evt.Sequence, e.seq, e.dst.String())
 					if err != nil {
 						return err
 					}
@@ -292,8 +315,6 @@ func (e *ethbr) newBlockUpdate(v *client.BlockNotification) (*client.BlockUpdate
 
 	update := &client.EvmBlockUpdate{}
 	update.BlockHeader, _ = codec.RLP.MarshalToBytes(*header)
-	//TODO get validators
-	//update.Validators = header.Extra format marshal
 	buf := new(bytes.Buffer)
 	encodeSigHeader(buf, v.Header)
 	update.EvmHeader = buf.Bytes()

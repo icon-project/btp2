@@ -65,5 +65,5 @@ type Receiver interface {
 	BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (MessageProof, error)
 	GetHeightForSeq(seq int64) int64
 	BuildRelayMessage(rmis []RelayMessageItem) ([]byte, error)
-	FinalizedStatus(bls <-chan *types.BMCLinkStatus)
+	FinalizedStatus(blsc <-chan *types.BMCLinkStatus)
 }

@@ -131,10 +131,9 @@ func (b *bridge) GetHeightForSeq(seq int64) int64 {
 
 func (b *bridge) BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
 	bus := make([]link.BlockUpdate, 0)
-	for _, rs := range b.rss {
-		bu := NewBlockUpdate(bls, rs.Height())
-		bus = append(bus, bu)
-	}
+	rs := b.nextReceiveStatus(bls)
+	bu := NewBlockUpdate(bls, rs.Height())
+	bus = append(bus, bu)
 	return bus, nil
 }
 
@@ -185,7 +184,15 @@ func (b *bridge) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error)
 	return nil, nil
 }
 
-func (b *bridge) FinalizedStatus(bls <-chan *types.BMCLinkStatus) {
+func (b *bridge) FinalizedStatus(blsc <-chan *types.BMCLinkStatus) {
+	go func() {
+		for {
+			select {
+			case bls := <-blsc:
+				b.clearReceiveStatus(bls)
+			}
+		}
+	}()
 }
 
 //TODO Refactoring reduplication func
@@ -264,9 +271,22 @@ func (b *bridge) monitorBTP2Block(req *client.BTPRequest, bs *types.BMCLinkStatu
 	}, scb, errCb)
 }
 
-func (b *bridge) updateReceiveStatus(bs *types.BMCLinkStatus) {
+func (b *bridge) nextReceiveStatus(bls *types.BMCLinkStatus) *receiveStatus {
 	for i, rs := range b.rss {
-		if rs.Height() <= bs.Verifier.Height && rs.Seq() <= bs.RxSeq {
+		if bls.Verifier.Height <= rs.Height() {
+			if bls.Verifier.Height == rs.Height() {
+				return b.rss[i+1]
+			}
+			return b.rss[i]
+		}
+	}
+	return nil
+}
+
+func (b *bridge) clearReceiveStatus(bls *types.BMCLinkStatus) {
+	for i, rs := range b.rss {
+		if rs.Height() <= bls.Verifier.Height && rs.Seq() <= bls.RxSeq {
+			b.l.Debugf("clear receive data (height:%d, seq:%d) ", bls.Verifier.Height, bls.RxSeq)
 			b.rss = b.rss[i+1:]
 			return
 		}

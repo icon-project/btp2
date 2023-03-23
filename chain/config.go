@@ -30,6 +30,7 @@ type BaseConfig struct {
 	KeyStorePass string                 `json:"key_password,omitempty"`
 	KeySecret    string                 `json:"key_secret,omitempty"`
 	BridgeMode   bool                   `json:"bridge_mode"`
+	LatestResult bool                   `json:"latest_result"`
 	Options      map[string]interface{} `json:"options,omitempty"`
 }
 

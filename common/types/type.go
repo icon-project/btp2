@@ -57,7 +57,7 @@ type RelayResult struct {
 }
 
 type Sender interface {
-	Start() (<-chan RelayResult, error)
+	Start() (<-chan *RelayResult, error)
 	Stop()
 	GetStatus() (*BMCLinkStatus, error)
 	Relay(rm RelayMessage) (int, error)

@@ -8,6 +8,7 @@ import (
 
 	"github.com/icon-project/btp2/chain/icon/client"
 	"github.com/icon-project/btp2/common/codec"
+	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/intconv"
 	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
@@ -141,28 +142,28 @@ func (b *btp2) GetHeightForSeq(seq int64) int64 {
 }
 
 func (b *btp2) BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
-	b.updateReceiveStatus(bls)
 	bus := make([]link.BlockUpdate, 0)
-	for _, rs := range b.rss {
-
-		h, p, err := b.getBtpHeader(rs.Height())
-		if err != nil {
-			return nil, err
-		}
-		bh := &client.BTPBlockHeader{}
-		if _, err := codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
-			return nil, err
-		}
-		bbu := &client.BTPBlockUpdate{BTPBlockHeader: h, BTPBlockProof: p}
-
-		if limit < int64(len(codec.RLP.MustMarshalToBytes(bbu))) {
-			return bus, nil
-		}
-
-		bu := NewBlockUpdate(bls, bh.MainHeight, bbu)
-		bus = append(bus, bu)
-
+	rs := b.nextReceiveStatus(bls)
+	if rs == nil {
+		return nil, errors.IllegalArgumentError.New("No blockUpdate available to create.")
 	}
+
+	h, p, err := b.getBtpHeader(rs.Height())
+	if err != nil {
+		return nil, err
+	}
+	bh := &client.BTPBlockHeader{}
+	if _, err := codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
+		return nil, err
+	}
+	bbu := &client.BTPBlockUpdate{BTPBlockHeader: h, BTPBlockProof: p}
+
+	if limit < int64(len(codec.RLP.MustMarshalToBytes(bbu))) {
+		return bus, nil
+	}
+
+	bu := NewBlockUpdate(bls, bh.MainHeight, bbu)
+	bus = append(bus, bu)
 	return bus, nil
 }
 
@@ -219,6 +220,7 @@ func (b *btp2) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		bm.Messages = append(bm.Messages, tpm)
 	}
 
@@ -230,13 +232,33 @@ func (b *btp2) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error) {
 	return rb, nil
 }
 
-func (b *btp2) FinalizedStatus(bls <-chan *types.BMCLinkStatus) {
-
+func (b *btp2) FinalizedStatus(blsc <-chan *types.BMCLinkStatus) {
+	go func() {
+		for {
+			select {
+			case bls := <-blsc:
+				b.clearReceiveStatus(bls)
+			}
+		}
+	}()
 }
 
-func (b *btp2) updateReceiveStatus(bls *types.BMCLinkStatus) {
+func (b *btp2) nextReceiveStatus(bls *types.BMCLinkStatus) *receiveStatus {
+	for i, rs := range b.rss {
+		if bls.Verifier.Height <= rs.Height() {
+			if bls.Verifier.Height == rs.Height() {
+				return b.rss[i+1]
+			}
+			return b.rss[i]
+		}
+	}
+	return nil
+}
+
+func (b *btp2) clearReceiveStatus(bls *types.BMCLinkStatus) {
 	for i, rs := range b.rss {
 		if rs.Height() <= bls.Verifier.Height && rs.Seq() <= bls.RxSeq {
+			b.l.Debugf("clear receive data (height:%d, seq:%d) ", bls.Verifier.Height, bls.RxSeq)
 			b.rss = b.rss[i+1:]
 			return
 		}
