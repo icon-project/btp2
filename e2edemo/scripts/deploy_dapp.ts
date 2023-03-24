@@ -2,48 +2,67 @@ import fs from 'fs';
 import {ethers} from 'hardhat';
 import {Contract} from "./icon/contract";
 import {IconNetwork} from "./icon/network";
-import {Deployments} from "./setup/config";
-const {E2E_DEMO_PATH} = process.env
+import {chainType, Deployments} from "./setup/config";
 
+const {PWD} = process.env
 const deployments = Deployments.getDefault();
-const iconNetwork = IconNetwork.getDefault();
 
-async function deploy_dapp() {
-  // deploy DApp java
-  const icon = deployments.get('icon')
-  const dappJar = E2E_DEMO_PATH + '/dapp-sample/build/libs/dapp-sample-0.1.0-optimized.jar'
+async function deploy_dapp_java(target: string, chain: any) {
+  const iconNetwork = IconNetwork.getNetwork(target);
+  const dappJar = `${PWD}/dapp-sample/build/libs/dapp-sample-0.1.0-optimized.jar`
   const content = fs.readFileSync(dappJar).toString('hex')
   const dapp = new Contract(iconNetwork)
   const deployTxHash = await dapp.deploy({
     content: content,
     params: {
-      _callService: icon.contracts.xcall,
+      _callService: chain.contracts.xcall,
     }
   })
   const result = await dapp.getTxResult(deployTxHash)
   if (result.status != 1) {
     throw new Error(`DApp deployment failed: ${result.txHash}`);
   }
-  icon.contracts.dapp = dapp.address
-  console.log(`ICON DApp: deployed to ${dapp.address}`);
+  chain.contracts.dapp = dapp.address
+  console.log(`${target} DApp: deployed to ${dapp.address}`);
+}
 
-  // deploy DApp solidity
-  const hardhat = deployments.get('hardhat')
+async function deploy_dapp_solidity(target: string, chain: any) {
   const DAppSample = await ethers.getContractFactory("DAppProxySample")
   const dappSol = await DAppSample.deploy()
   await dappSol.deployed()
-  await dappSol.initialize(hardhat.contracts.xcall)
-  hardhat.contracts.dapp = dappSol.address
-  console.log(`Hardhat DApp: deployed to ${dappSol.address}`);
+  await dappSol.initialize(chain.contracts.xcall)
+  chain.contracts.dapp = dappSol.address
+  console.log(`${target} DApp: deployed to ${dappSol.address}`);
+}
+
+async function main() {
+  const src = deployments.getSrc();
+  const dst = deployments.getDst();
+  const srcChain = deployments.get(src);
+  const dstChain = deployments.get(dst);
+
+  // deploy to src network first
+  await deploy_dapp_java(src, srcChain);
+
+  // deploy to dst network
+  switch (chainType(dstChain)) {
+    case 'icon':
+      await deploy_dapp_java(dst, dstChain);
+      break;
+    case 'hardhat':
+      await deploy_dapp_solidity(dst, dstChain);
+      break;
+    default:
+      throw new Error(`Unknown chain type: ${chainType(dstChain)}`);
+  }
 
   // update deployments
-  deployments.set('icon', icon)
-  deployments.set('hardhat', hardhat)
+  deployments.set(src, srcChain);
+  deployments.set(dst, dstChain);
   deployments.save();
 }
 
-deploy_dapp()
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

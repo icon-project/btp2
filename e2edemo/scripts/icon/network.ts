@@ -1,14 +1,15 @@
 import IconService from 'icon-sdk-js';
 import Wallet from "icon-sdk-js/build/Wallet";
+import {ChainConfig} from "../setup/config";
 
 const {IconWallet, HttpProvider} = IconService;
-const {E2E_DEMO_PATH} = process.env;
+const {PWD} = process.env;
 
 export class IconNetwork {
   iconService: IconService;
   nid: number;
   wallet: Wallet;
-  private static instance: IconNetwork;
+  private static instances: Map<string, IconNetwork> = new Map();
 
   constructor(_iconService: IconService, _nid: number, _wallet: Wallet) {
     this.iconService = _iconService;
@@ -17,14 +18,28 @@ export class IconNetwork {
   }
 
   public static getDefault() {
-    if (!this.instance) {
-      const httpProvider = new HttpProvider('http://localhost:9080/api/v3');
-      const iconService = new IconService(httpProvider);
-      const keystore = require(`${E2E_DEMO_PATH}/docker/icon/config/keystore.json`);
-      const wallet = IconWallet.loadKeystore(keystore, 'gochain', false);
-      this.instance = new this(iconService, 3, wallet);
+    return this.getNetwork('icon0');
+  }
+
+  public static getNetwork(target: string) {
+    const entry = this.instances.get(target);
+    if (entry) {
+      return entry;
     }
-    return this.instance;
+    const config: any = ChainConfig.getChain(target);
+    const httpProvider = new HttpProvider(config.endpoint);
+    const iconService = new IconService(httpProvider);
+    let keystorePath: string = config.keystore;
+    if (!keystorePath.startsWith('/')) {
+      // convert to absolute path
+      keystorePath = `${PWD}/${keystorePath}`;
+    }
+    const keystore = require(keystorePath);
+    const wallet = IconWallet.loadKeystore(keystore, config.keypass, false);
+    const nid = parseInt(config.network.split(".")[0], 16);
+    const network = new this(iconService, nid, wallet);
+    this.instances.set(target, network);
+    return network;
   }
 
   async getTotalSupply() {

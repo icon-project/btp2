@@ -11,20 +11,27 @@ import (
 	"github.com/icon-project/btp2/common/types"
 )
 
-type RelayState int
+const (
+	CodeBTP      errors.Code = 0
+	CodeBMC      errors.Code = 10
+	CodeBMV      errors.Code = 25
+	CodeBSH      errors.Code = 40
+	CodeReserved errors.Code = 55
+)
 
 const (
-	RUNNING = iota
-	PENDING
+	BMVUnknown = CodeBMV + iota
+	BMVNotVerifiable
+	BMVAlreadyVerified
+	BMVRevertInvalidBlockWitnessOld
 )
 
 type relayMessage struct {
-	id            int
-	bls           *types.BMCLinkStatus
-	bpHeight      int64
-	message       []byte
-	rmis          []RelayMessageItem
-	sendingStatus bool
+	id       int
+	bls      *types.BMCLinkStatus
+	bpHeight int64
+	message  []byte
+	rmis     []RelayMessageItem
 }
 
 func (r *relayMessage) Id() int {
@@ -56,21 +63,19 @@ type relayMessageItem struct {
 	size int64
 }
 type Link struct {
-	r          Receiver
-	s          types.Sender
-	l          log.Logger
-	mtx        sync.RWMutex
-	src        types.BtpAddress
-	dst        types.BtpAddress
-	rmsMtx     sync.RWMutex
-	rms        []*relayMessage
-	rss        []ReceiveStatus
-	rmi        *relayMessageItem
-	limitSize  int64
-	cfg        *chain.Config //TODO config refactoring
-	bls        *types.BMCLinkStatus
-	blsChannel chan *types.BMCLinkStatus
-	relayState RelayState
+	r         Receiver
+	s         types.Sender
+	l         log.Logger
+	mtx       sync.RWMutex
+	src       types.BtpAddress
+	dst       types.BtpAddress
+	rmsMtx    sync.RWMutex
+	rms       []*relayMessage
+	rss       []ReceiveStatus
+	rmi       *relayMessageItem
+	limitSize int64
+	cfg       *chain.Config //TODO config refactoring
+
 }
 
 func NewLink(cfg *chain.Config, r Receiver, l log.Logger) types.Link {
@@ -86,8 +91,6 @@ func NewLink(cfg *chain.Config, r Receiver, l log.Logger) types.Link {
 			rmis: make([][]RelayMessageItem, 0),
 			size: 0,
 		},
-		blsChannel: make(chan *types.BMCLinkStatus),
-		relayState: RUNNING,
 	}
 	link.rmi.rmis = append(link.rmi.rmis, make([]RelayMessageItem, 0))
 	return link
@@ -103,11 +106,7 @@ func (l *Link) Start(sender types.Sender) error {
 		return err
 	}
 
-	l.bls = bls
-
-	l.receiverChannel(errCh)
-
-	l.r.FinalizedStatus(l.blsChannel)
+	l.receiverChannel(bls, errCh)
 
 	for {
 		select {
@@ -125,32 +124,18 @@ func (l *Link) Stop() {
 	l.r.Stop()
 }
 
-func (l *Link) receiverChannel(errCh chan error) {
+func (l *Link) receiverChannel(bls *types.BMCLinkStatus, errCh chan error) {
 	once := new(sync.Once)
 	go func() {
-		rsc, err := l.r.Start(l.bls)
+		rsc, err := l.r.Start(bls)
 		for {
 			select {
 			case rs := <-rsc:
-				switch t := rs.(type) {
-				case ReceiveStatus:
-					l.rss = append(l.rss, t)
-					once.Do(func() {
-						if err = l.handleUndeliveredRelayMessage(); err != nil {
-							errCh <- err
-						}
-
-						if err = l.HandleRelayMessage(); err != nil {
-							errCh <- err
-						}
-						l.relayState = PENDING
-					})
-					if err = l.HandleRelayMessage(); err != nil {
-						errCh <- err
-					}
-				case error:
-					errCh <- t
-				}
+				once.Do(func() {
+					err = l.checkStatus(bls)
+				})
+				l.rss = append(l.rss, rs)
+				l.BuildRelayMessage(bls)
 			}
 		}
 
@@ -164,12 +149,12 @@ func (l *Link) receiverChannel(errCh chan error) {
 func (l *Link) senderChannel(errCh chan error) {
 	go func() {
 		l.limitSize = int64(l.s.TxSizeLimit()) - l.s.GetMarginForLimit()
-		rcc, err := l.s.Start()
+		scc, err := l.s.Start()
 
 		for {
 			select {
-			case rc := <-rcc:
-				err := l.result(rc)
+			case sc := <-scc:
+				err := l.result(sc)
 				errCh <- err
 			}
 		}
@@ -200,13 +185,13 @@ func (l *Link) clearReceiveStatus(bls *types.BMCLinkStatus) {
 	}
 }
 
-func (l *Link) buildRelayMessage() error {
+func (l *Link) BuildRelayMessage(bls *types.BMCLinkStatus) error {
 	if len(l.rmi.rmis) == 0 {
 		l.createRelayMessageItem()
 	}
 
 	//Get Block
-	bus, err := l.getHeader(l.bls)
+	bus, err := l.getHeader(bls)
 	if err != nil {
 		return err
 	}
@@ -215,91 +200,37 @@ func (l *Link) buildRelayMessage() error {
 		for _, bu := range bus {
 			l.rmi.rmis[len(l.rmi.rmis)-1] = append(l.rmi.rmis[len(l.rmi.rmis)-1], bu)
 			l.rmi.size += bu.Len()
-			err := bu.UpdateBMCLinkStatus(l.bls)
+			err := bu.UpdateBMCLinkStatus(bls)
 			if err != nil {
 				return err
 			}
 
-			if err = l.buildProof(l.bls, bu); err != nil {
+			if err = l.buildProof(bls, bu); err != nil {
 				return err
 			}
 
-			if err = l.appendRelayMessage(l.bls); err != nil {
+			if err = l.sendRelayMessage(bls); err != nil {
 				return err
 			}
 		}
 	}
 
 	if l.isOverLimit(l.rmi.size) {
-		l.appendRelayMessage(l.bls)
+		l.sendRelayMessage(bls)
 	}
 
 	return nil
 }
 
-func (l *Link) sendRelayMessage() error {
-	for _, rm := range l.rms {
-		if rm.sendingStatus == false {
-
-			_, err := l.s.Relay(rm)
-			if err != nil {
-				if errors.InvalidStateError.Equals(err) {
-					l.relayState = PENDING
-					return nil
-				} else {
-					return err
-				}
-			} else {
-				rm.sendingStatus = true
-			}
-		}
+func (l *Link) sendRelayMessage(bls *types.BMCLinkStatus) error {
+	rms, err := l.appendRelayMessage(bls)
+	if err != nil {
+		return err
 	}
-	return nil
-}
 
-func (l *Link) appendRelayMessage(bls *types.BMCLinkStatus) error {
-	for _, rmi := range l.rmi.rmis {
-		m, err := l.r.BuildRelayMessage(rmi)
-		if err != nil {
-			return err
-		}
-
-		rm := &relayMessage{
-			id:       rand.Int(),
-			bls:      bls,
-			bpHeight: l.r.GetHeightForSeq(bls.RxSeq),
-			message:  m,
-			rmis:     rmi,
-		}
-
-		rm.sendingStatus = false
+	for _, rm := range rms {
 		l.rms = append(l.rms, rm)
-	}
-
-	l.rmi.rmis = l.rmi.rmis[:0]
-	l.createRelayMessageItem()
-
-	return nil
-}
-
-func (l *Link) HandleRelayMessage() error {
-	l.rmsMtx.Lock()
-	defer l.rmsMtx.Unlock()
-	if l.relayState == RUNNING {
-		if err := l.sendRelayMessage(); err != nil {
-			return err
-		}
-
-		for true {
-			if l.relayState == RUNNING &&
-				len(l.rss) != 0 &&
-				l.bls.Verifier.Height < l.rss[len(l.rss)-1].Height() {
-				l.buildRelayMessage()
-				l.sendRelayMessage()
-			} else {
-				break
-			}
-		}
+		l.s.Relay(rm)
 	}
 	return nil
 }
@@ -316,15 +247,15 @@ func (l *Link) getHeader(bs *types.BMCLinkStatus) ([]BlockUpdate, error) {
 	}
 }
 
-func (l *Link) handleUndeliveredRelayMessage() error {
-	lastSeq := l.bls.RxSeq
+func (l *Link) checkStatus(bls *types.BMCLinkStatus) error {
+	lastSeq := bls.RxSeq
 	for {
 		h := l.r.GetHeightForSeq(lastSeq)
 		if h == 0 {
 			break
 		}
-		if h == l.bls.Verifier.Height {
-			mp, err := l.r.BuildMessageProof(l.bls, l.limitSize-l.rmi.size)
+		if h == bls.Verifier.Height {
+			mp, err := l.r.BuildMessageProof(bls, l.limitSize-l.rmi.size)
 			if err != nil {
 				return err
 			}
@@ -333,13 +264,13 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 				break
 			}
 
-			if mp.Len() != 0 || l.bls.RxSeq < mp.LastSeqNum() {
+			if mp.Len() != 0 || bls.RxSeq < mp.LastSeqNum() {
 				l.rmi.rmis[len(l.rmi.rmis)-1] = append(l.rmi.rmis[len(l.rmi.rmis)-1], mp)
 				l.rmi.size += mp.Len()
 			}
 			break
-		} else if h < l.bls.Verifier.Height {
-			err := l.buildProof(l.bls, nil)
+		} else if h < bls.Verifier.Height {
+			err := l.buildProof(bls, nil)
 			if err != nil {
 				return err
 			}
@@ -348,7 +279,7 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 		}
 	}
 	if l.rmi.size > 0 {
-		l.appendRelayMessage(l.bls)
+		l.sendRelayMessage(bls)
 	}
 	return nil
 }
@@ -365,7 +296,7 @@ func (l *Link) buildProof(bls *types.BMCLinkStatus, bu BlockUpdate) error {
 			break
 		}
 		if l.isOverLimit(l.rmi.size) {
-			l.appendRelayMessage(bls)
+			l.sendRelayMessage(bls)
 			if bu != nil || bu.ProofHeight() != 0 {
 				h := l.r.GetHeightForSeq(bls.RxSeq)
 				mh = h
@@ -386,7 +317,6 @@ func (l *Link) buildProof(bls *types.BMCLinkStatus, bu BlockUpdate) error {
 					}
 				}
 			}
-
 			if err := l.buildMessageProof(bls); err != nil {
 				return err
 			}
@@ -436,7 +366,33 @@ func (l *Link) buildBlockProof(bls *types.BMCLinkStatus, height int64) error {
 	return nil
 }
 
+func (l *Link) appendRelayMessage(bls *types.BMCLinkStatus) ([]*relayMessage, error) {
+	rms := make([]*relayMessage, 0)
+	for _, rmi := range l.rmi.rmis {
+		m, err := l.r.BuildRelayMessage(rmi)
+		if err != nil {
+			return nil, err
+		}
+
+		rm := &relayMessage{
+			id:       rand.Int(),
+			bls:      bls,
+			bpHeight: l.r.GetHeightForSeq(bls.RxSeq),
+			message:  m,
+			rmis:     rmi,
+		}
+		rms = append(rms, rm)
+	}
+	l.rmi.rmis = l.rmi.rmis[:0]
+	l.rmi.size = 0
+
+	return rms, nil
+}
+
 func (l *Link) removeRelayMessage(id int) {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+
 	index := 0
 	for i, rm := range l.rms {
 		if rm.id == id {
@@ -453,7 +409,7 @@ func (l *Link) removeRelayMessage(id int) {
 func (l *Link) updateBlockProof(id int) error {
 	rm := l.searchRelayMessage(id)
 	l.buildProof(rm.bls, nil)
-	l.appendRelayMessage(rm.bls)
+	l.sendRelayMessage(rm.bls)
 	return nil
 }
 
@@ -488,47 +444,22 @@ func (l *Link) createRelayMessageItem() {
 	l.rmi.size = 0
 }
 
-func (l *Link) successRelayMessage(id int) error {
-	l.relayState = RUNNING
-	rm := l.searchRelayMessage(id)
-	l.clearRelayMessage(rm.BMCLinkStatus())
-	l.clearReceiveStatus(rm.BMCLinkStatus())
-	err := l.HandleRelayMessage()
-	if err != nil {
-		return err
-	}
-	l.blsChannel <- rm.BMCLinkStatus()
-	return nil
-}
+func (l *Link) result(rr types.RelayResult) error {
+	l.rmsMtx.Lock()
+	defer l.rmsMtx.Lock()
 
-func (l *Link) result(rr *types.RelayResult) error {
 	switch rr.Err {
-	case errors.SUCCESS:
-		if l.cfg.Dst.LatestResult == true {
-			l.successRelayMessage(rr.Id)
-		} else {
-			if rr.Finalized == true {
-				l.successRelayMessage(rr.Id)
-			}
-		}
-	case errors.BMVUnknown:
+	case BMVUnknown:
 		l.l.Panicf("BMVUnknown Revert : ErrorCoder:%+v", rr.Err)
-	case errors.BMVNotVerifiable:
-		if rr.Finalized != false {
-			l.relayState = PENDING
+	case BMVNotVerifiable:
+		bls, err := l.s.GetStatus()
+		if err != nil {
+			return err
 		}
-		if rr.Finalized == true {
-			bls, err := l.s.GetStatus()
-			if err != nil {
-				return err
-			}
-			l.bls = bls
-			l.clearRelayMessage(l.bls) // TODO refactoring
-			l.HandleRelayMessage()
-		}
-	case errors.BMVAlreadyVerified:
+		l.BuildRelayMessage(bls)
+	case BMVAlreadyVerified:
 		l.removeRelayMessage(rr.Id)
-	case errors.BMVRevertInvalidBlockWitnessOld:
+	case BMVRevertInvalidBlockWitnessOld:
 		l.updateBlockProof(rr.Id)
 	default:
 		l.l.Panicf("fail to GetResult RelayMessage ID:%v ErrorCoder:%+v",
