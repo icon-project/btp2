@@ -118,7 +118,7 @@ func (b *btp2) Start(bls *types.BMCLinkStatus) (<-chan link.ReceiveStatus, error
 	}
 
 	go func() {
-		b.Monitoring(bls)
+		b.Monitoring(bls) //TODO error handling
 	}()
 
 	return b.rsc, nil

@@ -80,7 +80,7 @@ func NewEthBridge(src, dst btpTypes.BtpAddress, endpoint string, l log.Logger) *
 
 func (e *ethbr) Start(bs *btpTypes.BMCLinkStatus) (<-chan link.ReceiveStatus, error) {
 	go func() {
-		e.Monitoring(bs)
+		e.Monitoring(bs) //TODO error handling
 	}()
 
 	return e.rsc, nil
@@ -98,7 +98,6 @@ func (e *ethbr) BuildBlockUpdate(bls *btpTypes.BMCLinkStatus, limit int64) ([]li
 	bus := make([]link.BlockUpdate, 0)
 	rs := e.nextReceiveStatus(bls)
 	if rs == nil {
-		//TODO exception message
 		return nil, errors.IllegalArgumentError.New("No blockUpdate available to create.")
 	}
 

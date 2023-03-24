@@ -106,7 +106,7 @@ func (b *bridge) Start(bs *types.BMCLinkStatus) (<-chan link.ReceiveStatus, erro
 	}
 
 	go func() {
-		b.Monitoring(bs)
+		b.Monitoring(bs) //TODO error handling
 	}()
 
 	return b.rsc, nil
