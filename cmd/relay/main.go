@@ -175,6 +175,7 @@ func main() {
 	rootPFlags.String("src.key_secret", "", "Source Secret(password) file for keyStore")
 	rootPFlags.Bool("src.bridge_mode", false, "bridge mode")
 	rootPFlags.Bool("src.latest_result", false, "Sends relay messages regardless of final status reception.")
+	rootPFlags.Bool("src.filled_block_update", false, "Create relayMessage for all data received from the source network")
 
 	rootPFlags.String("dst.address", "", "BTP Address of destination blockchain (PROTOCOL://NID.BLOCKCHAIN/BMC)")
 	rootPFlags.String("dst.endpoint", "", "Endpoint of destination blockchain")
@@ -184,9 +185,9 @@ func main() {
 	rootPFlags.String("dst.key_secret", "", "Source Secret(password) file for keyStore")
 	rootPFlags.Bool("dst.bridge_mode", false, "bridge mode")
 	rootPFlags.Bool("dst.latest_result", false, "Sends relay messages regardless of final status reception.")
+	rootPFlags.Bool("dst.filled_block_update", false, "Create relayMessage for all data received from the source network")
 
 	rootPFlags.String("direction", "both", "btp2.0 network direction ( both, front, reverse)")
-	rootPFlags.Bool("maxSizeTx", false, "Send when the maximum transaction size is reached")
 
 	rootPFlags.Int64("offset", 0, "Offset of MTA")
 
