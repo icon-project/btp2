@@ -225,20 +225,20 @@ func (l *Link) buildRelayMessage() error {
 				if err = l.appendRelayMessage(); err != nil {
 					return err
 				}
+			} else {
+				//only blockUpdate is received
+				if l.cfg.Src.FilledBlockUpdate == true {
+					if l.isOverLimit(l.rmi.size) {
+						if err = l.appendRelayMessage(); err != nil {
+							return err
+						}
+					}
+				} else {
+					if err = l.appendRelayMessage(); err != nil {
+						return err
+					}
+				}
 			}
-		}
-	}
-
-	//TODO if only block updates are delivered without a message
-	if l.cfg.Src.FilledBlockUpdate == true {
-		if l.isOverLimit(l.rmi.size) {
-			if err = l.appendRelayMessage(); err != nil {
-				return err
-			}
-		}
-	} else {
-		if err = l.appendRelayMessage(); err != nil {
-			return err
 		}
 	}
 
