@@ -248,7 +248,6 @@ func (l *Link) buildRelayMessage() error {
 func (l *Link) sendRelayMessage() error {
 	for _, rm := range l.rms {
 		if rm.sendingStatus == false {
-
 			_, err := l.s.Relay(rm)
 			if err != nil {
 				if errors.InvalidStateError.Equals(err) {
