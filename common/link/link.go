@@ -526,32 +526,35 @@ func (l *Link) updateBMCLinkStatus() error {
 }
 
 func (l *Link) result(rr *types.RelayResult) error {
-	rm := l.getRelayMessageForId(rr.Id)
-	if rm != nil {
-		switch rr.Err {
-		case errors.SUCCESS:
-			if l.cfg.Dst.LatestResult == true {
+	switch rr.Err {
+	case errors.SUCCESS:
+		if l.cfg.Dst.LatestResult == true {
+			l.successRelayMessage(rr.Id)
+		} else {
+			if rr.Finalized == true {
 				l.successRelayMessage(rr.Id)
-			} else {
-				if rr.Finalized == true {
-					l.successRelayMessage(rr.Id)
-				}
 			}
-		case errors.BMVUnknown:
-			l.l.Panicf("BMVUnknown Revert : ErrorCoder:%+v", rr.Err)
-		case errors.BMVNotVerifiable:
-			if rr.Finalized != true {
-				l.relayState = PENDING
-			} else {
+		}
+	case errors.BMVUnknown:
+		l.l.Panicf("BMVUnknown Revert : ErrorCoder:%+v", rr.Err)
+	case errors.BMVNotVerifiable:
+		if rr.Finalized != true {
+			l.relayState = PENDING
+		} else {
+			rm := l.getRelayMessageForId(rr.Id)
+			if rm != nil {
 				l.updateBMCLinkStatus()
 				l.removeAllRelayMessage()
 				l.relayState = RUNNING
 				l.HandleRelayMessage()
 			}
-		case errors.BMVAlreadyVerified:
-			if rr.Finalized != true {
-				l.relayState = PENDING
-			} else {
+		}
+	case errors.BMVAlreadyVerified:
+		if rr.Finalized != true {
+			l.relayState = PENDING
+		} else {
+			rm := l.getRelayMessageForId(rr.Id)
+			if rm != nil {
 				l.updateBMCLinkStatus()
 				l.relayState = RUNNING
 				index := l.removeRelayMessage(l.bls)
@@ -565,14 +568,13 @@ func (l *Link) result(rr *types.RelayResult) error {
 					}
 				}
 			}
-		case errors.BMVRevertInvalidBlockWitnessOld:
-			//TODO Error handling required on Finalized
-			l.updateBlockProof(rr.Id)
-		default:
-			l.l.Panicf("fail to GetResult RelayMessage ID:%v ErrorCoder:%+v",
-				rr.Id, rr.Err)
 		}
+	case errors.BMVRevertInvalidBlockWitnessOld:
+		//TODO Error handling required on Finalized
+		l.updateBlockProof(rr.Id)
+	default:
+		l.l.Panicf("fail to GetResult RelayMessage ID:%v ErrorCoder:%+v",
+			rr.Id, rr.Err)
 	}
-
 	return nil
 }
