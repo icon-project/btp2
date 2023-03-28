@@ -42,6 +42,7 @@ export class Deployments {
   }
 }
 
+
 export class ChainConfig {
   private static map: Map<String, any>;
 
