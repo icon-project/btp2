@@ -210,12 +210,11 @@ func (l *Link) buildRelayMessage() error {
 
 	if len(bus) != 0 {
 		for _, bu := range bus {
-			l.rmi.rmis[len(l.rmi.rmis)-1] = append(l.rmi.rmis[len(l.rmi.rmis)-1], bu)
-			l.rmi.size += bu.Len()
+			l.appendRelayMessageItem(bu)
+
 			if err := bu.UpdateBMCLinkStatus(l.bls); err != nil {
 				return err
 			}
-
 			rs := l.getReceiveStatusForHeight()
 			if l.bls.RxSeq < rs.Seq() {
 				if err = l.buildProof(bu); err != nil {
@@ -248,7 +247,6 @@ func (l *Link) buildRelayMessage() error {
 func (l *Link) sendRelayMessage() error {
 	for _, rm := range l.rms {
 		if rm.sendingStatus == false {
-
 			_, err := l.s.Relay(rm)
 			if err != nil {
 				if errors.InvalidStateError.Equals(err) {
@@ -371,56 +369,66 @@ func (l *Link) buildProof(bu BlockUpdate) error {
 		if rs.Seq() <= l.bls.RxSeq {
 			break
 		}
+
+		mp, err := l.buildMessageProof()
+		if err != nil {
+			return err
+		}
+
 		if l.isOverLimit(l.rmi.size) {
 			l.appendRelayMessage()
-			if err := l.buildBlockProof(l.bls); err != nil {
+			bp, err := l.buildBlockProof(l.bls)
+			if err != nil {
 				return err
 			}
+			l.appendRelayMessageItem(bp)
 		} else {
 			if bu == nil || bu.ProofHeight() == -1 {
-				if err := l.buildBlockProof(l.bls); err != nil {
+				bp, err := l.buildBlockProof(l.bls)
+				if err != nil {
 					return err
 				}
+				l.appendRelayMessageItem(bp)
 			}
 		}
-		if err := l.buildMessageProof(); err != nil {
-			return err
-		}
+		l.appendRelayMessageItem(mp)
+
 	}
 	return nil
 }
 
-func (l *Link) buildMessageProof() error {
+func (l *Link) buildMessageProof() (MessageProof, error) {
 	mp, err := l.r.BuildMessageProof(l.bls, l.limitSize-l.rmi.size)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if mp != nil {
-		l.rmi.rmis[len(l.rmi.rmis)-1] = append(l.rmi.rmis[len(l.rmi.rmis)-1], mp)
-		l.rmi.size += mp.Len()
 		if err := mp.UpdateBMCLinkStatus(l.bls); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return mp, nil
 }
 
-func (l *Link) buildBlockProof(bls *types.BMCLinkStatus) error {
+func (l *Link) buildBlockProof(bls *types.BMCLinkStatus) (BlockProof, error) {
 	h := l.r.GetHeightForSeq(bls.RxSeq)
 	bf, err := l.r.BuildBlockProof(bls, h)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if bf != nil {
-		l.rmi.rmis[len(l.rmi.rmis)-1] = append(l.rmi.rmis[len(l.rmi.rmis)-1], bf)
-		l.rmi.size += bf.Len()
 		if err := bf.UpdateBMCLinkStatus(bls); err != nil {
-			return err
+			return nil, err
 		}
 
 	}
-	return nil
+	return bf, nil
+}
+
+func (l *Link) appendRelayMessageItem(rmi RelayMessageItem) {
+	l.rmi.rmis[len(l.rmi.rmis)-1] = append(l.rmi.rmis[len(l.rmi.rmis)-1], rmi)
+	l.rmi.size += rmi.Len()
 }
 
 func (l *Link) getReceiveStatusForHeight() ReceiveStatus {
