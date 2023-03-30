@@ -35,10 +35,6 @@ build_image() {
     mkdir -p ${BUILD_DIR}/dist/bin/
     cp ${BIN_DIR}/* ${BUILD_DIR}/dist/bin/
 
-    mkdir -p ${BUILD_DIR}/dist/contracts
-    cp -r ${CONTRACTS_DIST_DIR}/* ${BUILD_DIR}/dist/contracts/
-    tar cv -C ${BUILD_DIR}/dist -f ${BUILD_DIR}/dist/contracts.tar contracts
-
     CDIR=$(pwd)
     cd ${BUILD_DIR}
 
@@ -50,7 +46,6 @@ build_image() {
     local result=$?
 
     cd ${CDIR}
-    #rm -rf ${BUILD_DIR}/dist
     return $result
 }
 
