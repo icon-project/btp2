@@ -115,11 +115,11 @@ func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (lin
 	var seq int
 
 	rps := make([]*client.ReceiptProof, 0)
-	rs := e.GetReceiveHeightForSequence(bls.RxSeq + 1)
-	e.l.Debugf("OnBlockOfSrc rpsCnt:%d rxSeq:%d", len(rs.rps), rs.Seq())
+	rs := e.GetReceiveStatusForSequence(bls.RxSeq + 1)
 	if rs == nil {
 		return nil, nil
 	}
+	e.l.Debugf("OnBlockOfSrc rpsCnt:%d rxSeq:%d", len(rs.rps), rs.Seq())
 
 	rpsCnt := int64(len(rs.rps))
 	offset := bls.RxSeq - (rs.Seq() - rpsCnt)
@@ -160,9 +160,9 @@ func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (lin
 }
 
 func (e *ethbr) GetHeightForSeq(seq int64) int64 {
-	rs := e.GetReceiveHeightForSequence(seq)
+	rs := e.GetReceiveStatusForSequence(seq)
 	if rs != nil {
-		return e.GetReceiveHeightForSequence(seq).height
+		return rs.height
 	} else {
 		return 0
 	}
@@ -326,16 +326,16 @@ func (e *ethbr) newBlockUpdate(v *client.BlockNotification) (*client.BlockUpdate
 	return bu, nil
 }
 
-func (e *ethbr) GetReceiveHeightForSequence(seq int64) *receiveStatus {
+func (e *ethbr) GetReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range e.rss {
-		if seq <= rs.Seq() && seq >= rs.Seq() {
+		if rs.Seq() <= seq && seq <= rs.Seq() {
 			return rs
 		}
 	}
 	return nil
 }
 
-func (e *ethbr) GetReceiveHeightForHeight(height int64) *receiveStatus {
+func (e *ethbr) GetReceiveStatusForHeight(height int64) *receiveStatus {
 	for _, rs := range e.rss {
 		if rs.Height() == height {
 			return rs

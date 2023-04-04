@@ -121,9 +121,9 @@ func (b *bridge) GetStatus() (link.ReceiveStatus, error) {
 }
 
 func (b *bridge) GetHeightForSeq(seq int64) int64 {
-	rs := b.GetReceiveHeightForSequence(seq)
+	rs := b.GetReceiveStatusForSequence(seq)
 	if rs != nil {
-		return b.GetReceiveHeightForSequence(seq).height
+		return rs.height
 	} else {
 		return 0
 	}
@@ -143,7 +143,7 @@ func (b *bridge) BuildBlockProof(bls *types.BMCLinkStatus, height int64) (link.B
 
 func (b *bridge) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.MessageProof, error) {
 	var rmSize int
-	rs := b.GetReceiveHeightForSequence(bls.RxSeq + 1)
+	rs := b.GetReceiveStatusForSequence(bls.RxSeq + 1)
 	if rs == nil {
 		return nil, nil
 	}
@@ -293,9 +293,9 @@ func (b *bridge) clearReceiveStatus(bls *types.BMCLinkStatus) {
 	}
 }
 
-func (b *bridge) GetReceiveHeightForSequence(seq int64) *receiveStatus {
+func (b *bridge) GetReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range b.rss {
-		if seq <= rs.Seq() && seq >= rs.Seq() {
+		if rs.Seq() <= seq && seq <= rs.Seq() {
 			return rs
 		}
 	}

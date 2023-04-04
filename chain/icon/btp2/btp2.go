@@ -133,9 +133,9 @@ func (b *btp2) GetStatus() (link.ReceiveStatus, error) {
 }
 
 func (b *btp2) GetHeightForSeq(seq int64) int64 {
-	rs := b.GetReceiveHeightForSequence(seq)
+	rs := b.GetReceiveStatusForSequence(seq)
 	if rs != nil {
-		return b.GetReceiveHeightForSequence(seq).height
+		return rs.height
 	} else {
 		return 0
 	}
@@ -172,7 +172,7 @@ func (b *btp2) BuildBlockProof(bls *types.BMCLinkStatus, height int64) (link.Blo
 }
 
 func (b *btp2) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.MessageProof, error) {
-	rs := b.GetReceiveHeightForHeight(bls.Verifier.Height)
+	rs := b.GetReceiveStatusForHeight(bls.Verifier.Height)
 
 	if rs == nil {
 		return nil, nil
@@ -339,6 +339,7 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 		if _, err = codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
 			return err
 		}
+
 		if bh.MainHeight != b.startHeight {
 			msgs, err := b.getBtpMessage(bh.MainHeight)
 			if err != nil {
@@ -352,23 +353,23 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 			}
 			b.rs = rs
 			b.rss = append(b.rss, rs)
-			b.l.Debugf("monitor info : Height:%d  UpdateNumber:%d  MessageCnt:%d ", bh.MainHeight, bh.UpdateNumber, len(msgs))
+			b.l.Debugf("monitor info : Height:%d  UpdateNumber:%d  MessageCnt:%d  Seq:%d ", bh.MainHeight, bh.UpdateNumber, len(msgs), b.seq)
 			b.rsc <- rs
 		}
 		return nil
 	}, scb, errCb)
 }
 
-func (b *btp2) GetReceiveHeightForSequence(seq int64) *receiveStatus {
+func (b *btp2) GetReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range b.rss {
-		if seq <= rs.Seq() && seq >= rs.Seq() {
+		if rs.Seq() <= seq && seq <= rs.Seq() { //TODO
 			return rs
 		}
 	}
 	return nil
 }
 
-func (b *btp2) GetReceiveHeightForHeight(height int64) *receiveStatus {
+func (b *btp2) GetReceiveStatusForHeight(height int64) *receiveStatus {
 	for _, rs := range b.rss {
 		if rs.Height() == height {
 			return rs
