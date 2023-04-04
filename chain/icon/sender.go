@@ -46,7 +46,12 @@ var (
 )
 
 type Queue struct {
-	values []types.RelayMessage
+	values []*relayMessageTx
+}
+
+type relayMessageTx struct {
+	id     int
+	txHash []byte
 }
 
 func NewQueue() *Queue {
@@ -54,17 +59,21 @@ func NewQueue() *Queue {
 	return queue
 }
 
-func (q *Queue) enqueue(rm types.RelayMessage) error {
+func (q *Queue) enqueue(id int, txHash []byte) error {
 	if MaxQueueSize <= len(q.values) {
 		return fmt.Errorf("queue full")
 	}
-	q.values = append(q.values, rm)
+	q.values = append(q.values,
+		&relayMessageTx{
+			id:     id,
+			txHash: txHash,
+		})
 	return nil
 }
 
 func (q *Queue) dequeue(id int) {
 	for i, rm := range q.values {
-		if rm.Id() == id {
+		if rm.id == id {
 			q.values = q.values[i+1:]
 			break
 		}
@@ -129,14 +138,20 @@ func (s *sender) Relay(rm types.RelayMessage) (int, error) {
 	if MaxQueueSize <= s.queue.len() {
 		return 0, errors.InvalidStateError.New("pending queue full")
 	}
-	s.queue.enqueue(rm)
 	s.l.Debugf("_relay src address:%s, rm id:%d, rm msg:%s", s.src.String(), rm.Id(), hex.EncodeToString(rm.Bytes()[:]))
 
 	thp, err := s._relay(rm)
-
 	if err != nil {
 		return 0, err
 	}
+
+	b, err := thp.Hash.Value()
+	if err != nil {
+		return 0, err
+	}
+
+	s.queue.enqueue(rm.Id(), b)
+
 	go s.result(rm.Id(), thp)
 	return rm.Id(), nil
 }
@@ -148,8 +163,6 @@ func (s *sender) GetMarginForLimit() int64 {
 func (s *sender) _relay(rm types.RelayMessage) (*client.TransactionHashParam, error) {
 	msg := rm.Bytes()
 	idx := len(msg) / txSizeLimit
-
-	//
 
 	if idx == 0 {
 		rmp := &client.BMCRelayMethodParams{

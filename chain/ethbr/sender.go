@@ -47,7 +47,12 @@ var (
 )
 
 type Queue struct {
-	values []btpTypes.RelayMessage
+	values []*relayMessageTx
+}
+
+type relayMessageTx struct {
+	id     int
+	txHash []byte
 }
 
 func NewQueue() *Queue {
@@ -55,17 +60,21 @@ func NewQueue() *Queue {
 	return queue
 }
 
-func (q *Queue) enqueue(rm btpTypes.RelayMessage) error {
+func (q *Queue) enqueue(id int, txHash []byte) error {
 	if MaxQueueSize <= len(q.values) {
 		return fmt.Errorf("queue full")
 	}
-	q.values = append(q.values, rm)
+	q.values = append(q.values,
+		&relayMessageTx{
+			id:     id,
+			txHash: txHash,
+		})
 	return nil
 }
 
 func (q *Queue) dequeue(id int) {
 	for i, rm := range q.values {
-		if rm.Id() == id {
+		if rm.id == id {
 			q.values = q.values[i+1:]
 			break
 		}
@@ -152,12 +161,13 @@ func (s *sender) Relay(rm btpTypes.RelayMessage) (int, error) {
 	if MaxQueueSize <= s.queue.len() {
 		return 0, errors.InvalidStateError.New("pending queue full")
 	}
-	s.queue.enqueue(rm)
 
 	thp, err := s._relay(rm)
 	if err != nil {
 		return 0, err
 	}
+
+	s.queue.enqueue(rm.Id(), thp.Hash.Bytes())
 	go s.result(rm.Id(), thp)
 	return rm.Id(), nil
 }
