@@ -214,12 +214,12 @@ func (l *Link) buildRelayMessage() error {
 				return err
 			}
 
-			msgCnt, err := l.buildProof(bu)
+			mpLen, err := l.buildProof(bu)
 			if err != nil {
 				return err
 			}
 
-			if msgCnt == 0 {
+			if mpLen == 0 {
 				if l.cfg.Src.FilledBlockUpdate == true {
 					if l.isOverLimit(l.rmi.size) {
 						if err = l.appendRelayMessage(); err != nil {
@@ -342,7 +342,7 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 }
 
 func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
-	var index int64
+	var mpLen int64
 	for {
 		mp, err := l.buildMessageProof()
 		if err != nil {
@@ -353,7 +353,7 @@ func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
 			return 0, nil
 		}
 
-		index += mp.Len()
+		mpLen += mp.Len()
 		if l.isOverLimit(l.rmi.size) {
 			l.appendRelayMessage()
 			bp, err := l.buildBlockProof(l.bls)
@@ -373,7 +373,7 @@ func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
 		l.appendRelayMessageItem(mp)
 
 	}
-	return index, nil
+	return mpLen, nil
 }
 
 func (l *Link) buildMessageProof() (MessageProof, error) {
@@ -400,7 +400,6 @@ func (l *Link) buildBlockProof(bls *types.BMCLinkStatus) (BlockProof, error) {
 		if err := bf.UpdateBMCLinkStatus(bls); err != nil {
 			return nil, err
 		}
-
 	}
 	return bf, nil
 }
