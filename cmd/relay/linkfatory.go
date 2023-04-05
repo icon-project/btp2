@@ -110,6 +110,10 @@ func newReceiver(s string, cfg chain.Config, l log.Logger) link.Receiver {
 		}
 	case ETH:
 		fallthrough
+	case ETH2:
+		fallthrough
+	case BSC:
+		fallthrough
 	case HARDHAT:
 		receiver = ethbr.NewEthBridge(cfg.Src.Address, cfg.Dst.Address, cfg.Src.Endpoint, l)
 	default:
@@ -126,6 +130,10 @@ func newSender(s string, srcCfg chain.BaseConfig, dstCfg chain.BaseConfig, w wal
 	case ICON:
 		sender = icon.NewSender(srcCfg.Address, dstCfg.Address, w, dstCfg.Endpoint, srcCfg.Options, l)
 	case ETH:
+		fallthrough
+	case ETH2:
+		fallthrough
+	case BSC:
 		fallthrough
 	case HARDHAT:
 		sender = ethbr.NewSender(srcCfg.Address, dstCfg.Address, w, dstCfg.Endpoint, nil, l)

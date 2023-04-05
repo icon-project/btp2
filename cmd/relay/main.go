@@ -48,6 +48,8 @@ const (
 	ReverseDirection    = "reverse"
 	ICON                = "icon"
 	ETH                 = "eth"
+	ETH2                = "eth2"
+	BSC                 = "bsc"
 	HARDHAT             = "hardhat"
 )
 
