@@ -42,8 +42,7 @@ var (
 )
 
 const (
-	//DefaultKeyStorePass = "btp2"
-	DefaultKeyStorePass = ""
+	DefaultKeyStorePass = "relay"
 	BothDirection       = "both"
 	FrontDirection      = "front"
 	ReverseDirection    = "reverse"
@@ -116,26 +115,28 @@ func (c *Config) EnsureWallet() error {
 }
 
 var logoLines = []string{
-	"  ____ _____ ____    ____      _",
-	" | __ )_   _|  _ \\  |  _ \\ ___| | __ _ _   _",
-	" |  _ \\ | | | |_) | | |_) / _ \\ |/ _` | | | |",
-	" | |_) || | |  __/  |  _ <  __/ | (_| | |_| |",
-	" |____/ |_| |_|     |_| \\_\\___|_|\\__,_|\\__, |",
-	"                                       |___/ ",
+	"  _____      _             ",
+	" |  __ \\    | |            ",
+	" | |__) |___| | __ _ _   _ ",
+	" |  _  / _ \\ |/ _` | | | |",
+	" | | \\ \\  __/ | (_| | |_| |",
+	" |_|  \\_\\___|_|\\__,_|\\__, |",
+	"                      __/ |",
+	"                     |___/ ",
 }
 
 func main() {
-	rootCmd, rootVc := cli.NewCommand(nil, nil, "btp2", "BTP Relay CLI")
+	rootCmd, rootVc := cli.NewCommand(nil, nil, "relay", "BTP Relay CLI")
 	cfg := &Config{}
 	rootCmd.Long = "Command Line Interface of Relay for Blockchain Transmission Protocol"
 	cli.SetEnvKeyReplacer(rootVc, strings.NewReplacer(".", "_"))
 	//rootVc.Debug()
 	rootCmd.AddCommand(&cobra.Command{
 		Use:   "version",
-		Short: "Print btp2 version",
+		Short: "Print relay version",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("btp2 version", version, build)
+			fmt.Println("relay version", version, build)
 		},
 	})
 
@@ -170,24 +171,25 @@ func main() {
 	rootPFlags.String("src.address", "", "BTP Address of source blockchain (PROTOCOL://NID.BLOCKCHAIN/BMC)")
 	rootPFlags.String("src.endpoint", "", "Endpoint of source blockchain")
 	rootPFlags.StringToString("src.options", nil, "Options, comma-separated 'key=value'")
-	rootPFlags.String("src.key_store", "", "Source network id")
+	rootPFlags.String("src.key_store", "", "Source keyStore")
 	rootPFlags.String("src.key_password", "", "Source password of keyStore")
 	rootPFlags.String("src.key_secret", "", "Source Secret(password) file for keyStore")
-	rootPFlags.Bool("src.bridge_mode", false, "bridge mode")
+	rootPFlags.Bool("src.bridge_mode", false, "Source bridge mode")
 	rootPFlags.Bool("src.latest_result", false, "Sends relay messages regardless of final status reception.")
 	rootPFlags.Bool("src.filled_block_update", false, "Create relayMessage for all data received from the source network")
 
 	rootPFlags.String("dst.address", "", "BTP Address of destination blockchain (PROTOCOL://NID.BLOCKCHAIN/BMC)")
 	rootPFlags.String("dst.endpoint", "", "Endpoint of destination blockchain")
 	rootPFlags.StringToString("dst.options", nil, "Options, comma-separated 'key=value'")
-	rootPFlags.String("dst.key_store", "", "Source network id")
-	rootPFlags.String("dst.key_password", "", "Source password of keyStore")
-	rootPFlags.String("dst.key_secret", "", "Source Secret(password) file for keyStore")
-	rootPFlags.Bool("dst.bridge_mode", false, "bridge mode")
+	rootPFlags.String("dst.key_store", "", "Destination keyStore")
+	rootPFlags.String("dst.key_password", "", "Destination password of keyStore")
+	rootPFlags.String("dst.key_secret", "", "Destination Secret(password) file for keyStore")
+	rootPFlags.Bool("dst.bridge_mode", false, "Destination bridge mode")
 	rootPFlags.Bool("dst.latest_result", false, "Sends relay messages regardless of final status reception.")
 	rootPFlags.Bool("dst.filled_block_update", false, "Create relayMessage for all data received from the source network")
 
-	rootPFlags.String("direction", "both", "btp2.0 network direction ( both, front, reverse)")
+	rootPFlags.String("direction", "both", "relay network direction ( both, front, reverse)")
+	rootPFlags.Bool("maxSizeTx", false, "Send when the maximum transaction size is reached")
 
 	rootPFlags.Int64("offset", 0, "Offset of MTA")
 

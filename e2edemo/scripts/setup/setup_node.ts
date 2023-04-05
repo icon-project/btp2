@@ -2,8 +2,8 @@ import IconService from "icon-sdk-js";
 import {IconNetwork} from "../icon/network";
 import {Chain, Gov} from "../icon/system";
 
+const {CI_WORKFLOW} = process.env
 const {IconAmount} = IconService;
-
 const iconNetwork = IconNetwork.getDefault();
 const chain = new Chain(iconNetwork);
 const gov = new Gov(iconNetwork);
@@ -69,12 +69,11 @@ async function ensure_decentralization() {
   }
 
   if (mainPReps.preps.length == 0) {
-    console.log(prep)
     throw new Error(`ICON: need to wait until the next term for decentralization`);
   }
 }
 
-async function setup() {
+async function setup_node() {
   // ensure BTP revision
   const BTP_REVISION = 21
   const rev = parseInt(await chain.getRevision(), 16);
@@ -108,12 +107,39 @@ async function setup() {
         }
       })
   }
-  console.log('ICON: node setup completed')
 }
 
-ensure_decentralization()
-  .then(setup)
-  .catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
-  });
+function sleep(millis: number) {
+  return new Promise(resolve => setTimeout(resolve, millis));
+}
+
+async function main() {
+  let success = false;
+  for (let i = 0; i < 21; i++) {
+    success = await ensure_decentralization()
+      .then(() => {
+        return true;
+      })
+      .catch((error) => {
+        if (CI_WORKFLOW == "true") {
+          console.log(error);
+          return false;
+        }
+        throw error;
+      });
+    if (success) {
+      await setup_node()
+        .then(() => {
+          console.log('ICON: node setup completed')
+        });
+      break;
+    }
+    console.log(`... wait 10 seconds (${i})`)
+    await sleep(10000);
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

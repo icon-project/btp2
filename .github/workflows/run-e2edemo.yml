@@ -1,0 +1,66 @@
+name: Run E2E Demo
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  run-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Start containers
+        working-directory: ./e2edemo/docker
+        run: docker compose up -d
+
+      - name: Setup Go 1.18
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.18.7'
+
+      - name: Build relay
+        run: make relay
+
+      - name: Setup node 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: e2edemo/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./e2edemo
+        run: npm install
+
+      - name: Setup ICON node
+        working-directory: ./e2edemo
+        env:
+          CI_WORKFLOW: true
+        run: make setup-node
+
+      - name: Build all contracts
+        working-directory: ./e2edemo
+        run: make build-all
+
+      - name: Deploy all contracts
+        working-directory: ./e2edemo
+        run: make deploy-all
+
+      - name: Start relay
+        working-directory: ./e2edemo
+        run: ./relay.sh &
+
+      - name: Run demo
+        working-directory: ./e2edemo
+        run: make run-demo
+
+      - name: Stop containers
+        if: ${{ always() }}
+        working-directory: ./e2edemo/docker
+        run: docker compose down

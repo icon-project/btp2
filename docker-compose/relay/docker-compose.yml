@@ -1,0 +1,18 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  relay:
+    container_name: relay
+    image: relay:latest
+    volumes:
+      - type: bind
+        source: ./config
+        target: /etc/config
+      - type: bind
+        source: ./data
+        target: /data
+      - type: bind
+        source: ./keystore
+        target: /keystore
+    environment:
+      - RELAY_CONFIG=/etc/config/relay_config.json
+    restart: always
