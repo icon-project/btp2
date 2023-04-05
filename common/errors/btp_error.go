@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-package client
+package errors
 
 import (
 	"fmt"
-
-	"github.com/icon-project/btp2/common/errors"
 )
 
 var (
@@ -31,11 +29,12 @@ var (
 )
 
 const (
-	CodeBTP      errors.Code = 0
-	CodeBMC      errors.Code = 10
-	CodeBMV      errors.Code = 25
-	CodeBSH      errors.Code = 40
-	CodeReserved errors.Code = 55
+	SUCCESS      Code = -1
+	CodeBTP      Code = 0
+	CodeBMC      Code = 10
+	CodeBMV      Code = 25
+	CodeBSH      Code = 40
+	CodeReserved Code = 55
 )
 
 const (
@@ -53,7 +52,7 @@ const (
 )
 
 var (
-	BMCRevertCodeNames = map[errors.Code]string{
+	BMCRevertCodeNames = map[Code]string{
 		BMCRevert:                    "BMCRevert",
 		BMCRevertUnauthorized:        "BMCRevertUnauthorized",
 		BMCRevertInvalidSN:           "BMCRevertInvalidSN",
@@ -72,37 +71,39 @@ const (
 	BMVUnknown = CodeBMV + iota
 	BMVNotVerifiable
 	BMVAlreadyVerified
+	BMVRevertInvalidBlockWitnessOld
 )
 
 var (
-	BMVRevertCodeNames = map[errors.Code]string{
-		BMVUnknown:         "BMVUnknown",
-		BMVNotVerifiable:   "BMVNotVerifiable",
-		BMVAlreadyVerified: "BMVAlreadyVerified",
+	BMVRevertCodeNames = map[Code]string{
+		BMVUnknown:                      "BMVRevert",
+		BMVNotVerifiable:                "BMVNotVerifiable",
+		BMVAlreadyVerified:              "BMVAlreadyVerified",
+		BMVRevertInvalidBlockWitnessOld: "BMVRevertInvalidBlockWitnessOld",
 	}
 )
 
 func NewRevertError(code int) error {
-	c := errors.Code(code)
+	c := Code(code)
 	if c >= CodeBTP {
 		var msg string
 		var ok bool
-		if c <= CodeBMC {
+		if c < CodeBMC {
 			msg = fmt.Sprintf("BTPRevert[%d]", c)
-		} else if c <= CodeBMV {
+		} else if c < CodeBMV {
 			if msg, ok = BMCRevertCodeNames[c]; !ok {
 				msg = fmt.Sprintf("BMCRevert[%d]", c)
 			}
-		} else if c <= CodeBSH {
+		} else if c < CodeBSH {
 			if msg, ok = BMVRevertCodeNames[c]; !ok {
 				msg = fmt.Sprintf("BMVRevert[%d]", c)
 			}
-		} else if c <= CodeReserved {
+		} else if c < CodeReserved {
 			msg = fmt.Sprintf("BSHRevert[%d]", c)
 		} else {
 			msg = fmt.Sprintf("ReservedRevert[%d]", c)
 		}
-		return errors.NewBase(c, msg)
+		return NewBase(c, msg)
 	}
 	return nil
 }

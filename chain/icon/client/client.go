@@ -33,6 +33,7 @@ import (
 
 	"github.com/icon-project/btp2/common"
 	"github.com/icon-project/btp2/common/crypto"
+	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/jsonrpc"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
@@ -136,7 +137,7 @@ txLoop:
 		txh, err := c.SendTransaction(p)
 		if err != nil {
 			switch err {
-			case ErrSendFailByOverflow:
+			case errors.ErrSendFailByOverflow:
 				//TODO Retry max
 				time.Sleep(DefaultSendTransactionRetryInterval)
 				c.l.Debugf("Retry SendTransaction")
@@ -383,7 +384,7 @@ func (c *Client) Monitor(reqUrl string, reqPtr, respPtr interface{}, cb wsReadCa
 	}
 	conn, err := c.wsConnect(reqUrl, nil)
 	if err != nil {
-		return ErrConnectFail
+		return errors.ErrConnectFail
 	}
 	defer func() {
 		c.l.Debugf("Monitor finish %s", conn.LocalAddr().String())
@@ -521,29 +522,28 @@ func MapError(err error) error {
 			//fmt.Printf("jrResp.Error:%+v", re)
 			switch re.Code {
 			case JsonrpcErrorCodeTxPoolOverflow:
-				return ErrSendFailByOverflow
+				return errors.ErrSendFailByOverflow
 			case JsonrpcErrorCodeSystem:
 				if subEc, err := strconv.ParseInt(re.Message[1:5], 0, 32); err == nil {
 					//TODO return JsonRPC Error
 					switch subEc {
 					case ExpiredTransactionError:
-						return ErrSendFailByExpired
+						return errors.ErrSendFailByExpired
 					case FutureTransactionError:
-						return ErrSendFailByFuture
+						return errors.ErrSendFailByFuture
 					case TransactionPoolOverflowError:
-						return ErrSendFailByOverflow
+						return errors.ErrSendFailByOverflow
 					}
 				}
 			case JsonrpcErrorCodePending, JsonrpcErrorCodeExecuting:
-				return ErrGetResultFailByPending
+				return errors.ErrGetResultFailByPending
 			}
 		case *common.HttpError:
 			fmt.Printf("*common.HttpError:%+v", re)
-			return ErrConnectFail
+			return errors.ErrConnectFail
 		case *url.Error:
 			if common.IsConnectRefusedError(re.Err) {
-				//fmt.Printf("*url.Error:%+v", re)
-				return ErrConnectFail
+				return errors.ErrConnectFail
 			}
 		}
 	}

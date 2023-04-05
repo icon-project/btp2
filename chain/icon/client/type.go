@@ -458,7 +458,7 @@ type BTPBlockHeader struct {
 	MainHeight             int64
 	Round                  int32
 	NextProofContextHash   []byte
-	NetworkSectionToRoot   [][]byte
+	NetworkSectionToRoot   [][][]byte
 	NetworkID              int64
 	UpdateNumber           int64
 	PrevNetworkSectionHash []byte

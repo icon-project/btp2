@@ -8,6 +8,7 @@ import (
 
 	"github.com/icon-project/btp2/chain/icon/client"
 	"github.com/icon-project/btp2/common/codec"
+	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/intconv"
 	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
@@ -18,7 +19,6 @@ import (
 type receiveStatus struct {
 	height int64
 	seq    int64
-	mt     *mbt.MerkleBinaryTree
 }
 
 func (r *receiveStatus) Height() int64 {
@@ -29,29 +29,10 @@ func (r *receiveStatus) Seq() int64 {
 	return r.seq
 }
 
-func (r *receiveStatus) MerkleBinaryTree() *mbt.MerkleBinaryTree {
-	return r.mt
-}
-
-func newReceiveStatus(height, seq int64, msgs []string) (*receiveStatus, error) {
-	result := make([][]byte, 0)
-	for _, mg := range msgs {
-		m, err := base64.StdEncoding.DecodeString(mg)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, m)
-	}
-
-	mt, err := mbt.NewMerkleBinaryTree(mbt.HashFuncByUID("eth"), result)
-	if err != nil {
-		return nil, err
-	}
-
+func newReceiveStatus(height, seq int64) (*receiveStatus, error) {
 	return &receiveStatus{
 		height: height,
 		seq:    seq,
-		mt:     mt,
 	}, nil
 
 }
@@ -137,7 +118,7 @@ func (b *btp2) Start(bls *types.BMCLinkStatus) (<-chan link.ReceiveStatus, error
 	}
 
 	go func() {
-		b.Monitoring(bls)
+		b.Monitoring(bls) //TODO error handling
 	}()
 
 	return b.rsc, nil
@@ -152,37 +133,37 @@ func (b *btp2) GetStatus() (link.ReceiveStatus, error) {
 }
 
 func (b *btp2) GetHeightForSeq(seq int64) int64 {
-	rs := b.GetReceiveHeightForSequence(seq)
+	rs := b.GetReceiveStatusForSequence(seq)
 	if rs != nil {
-		return b.GetReceiveHeightForSequence(seq).height
+		return rs.height
 	} else {
 		return 0
 	}
 }
 
 func (b *btp2) BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
-	b.updateReceiveStatus(bls)
 	bus := make([]link.BlockUpdate, 0)
-	for _, rs := range b.rss {
-
-		h, p, err := b.getBtpHeader(rs.Height())
-		if err != nil {
-			return nil, err
-		}
-		bh := &client.BTPBlockHeader{}
-		if _, err := codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
-			return nil, err
-		}
-		bbu := &client.BTPBlockUpdate{BTPBlockHeader: h, BTPBlockProof: p}
-
-		if limit < int64(len(codec.RLP.MustMarshalToBytes(bbu))) {
-			return bus, nil
-		}
-
-		bu := NewBlockUpdate(bls, bh.MainHeight, bbu)
-		bus = append(bus, bu)
-
+	rs := b.nextReceiveStatus(bls)
+	if rs == nil {
+		return nil, errors.IllegalArgumentError.New("No blockUpdate available to create.")
 	}
+
+	h, p, err := b.getBtpHeader(rs.Height())
+	if err != nil {
+		return nil, err
+	}
+	bh := &client.BTPBlockHeader{}
+	if _, err := codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
+		return nil, err
+	}
+	bbu := &client.BTPBlockUpdate{BTPBlockHeader: h, BTPBlockProof: p}
+
+	if limit < int64(len(codec.RLP.MustMarshalToBytes(bbu))) {
+		return bus, nil
+	}
+
+	bu := NewBlockUpdate(bls, bh.MainHeight, bbu)
+	bus = append(bus, bu)
 	return bus, nil
 }
 
@@ -191,19 +172,25 @@ func (b *btp2) BuildBlockProof(bls *types.BMCLinkStatus, height int64) (link.Blo
 }
 
 func (b *btp2) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.MessageProof, error) {
-	rs := b.GetReceiveHeightForHeight(bls.Verifier.Height)
+	rs := b.GetReceiveStatusForHeight(bls.Verifier.Height)
 
 	if rs == nil {
 		return nil, nil
 	}
-	messageCnt := int64(rs.MerkleBinaryTree().Len())
+
+	mbt, err := b.getMessage(bls.Verifier.Height)
+	if err != nil {
+		return nil, err
+	}
+
+	messageCnt := int64(mbt.Len())
 	offset := bls.RxSeq - (rs.Seq() - messageCnt)
 	if (bls.RxSeq - rs.seq) == 0 {
 		return nil, nil
 	}
 	if messageCnt > 0 {
 		for i := offset + 1; i < messageCnt; i++ {
-			p, err := rs.MerkleBinaryTree().Proof(int(offset+1), int(i))
+			p, err := mbt.Proof(int(offset+1), int(i))
 			if err != nil {
 				return nil, err
 			}
@@ -215,7 +202,7 @@ func (b *btp2) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.Me
 		}
 	}
 
-	p, err := rs.MerkleBinaryTree().Proof(int(offset+1), int(messageCnt))
+	p, err := mbt.Proof(int(offset+1), int(messageCnt))
 	if err != nil {
 		return nil, err
 	}
@@ -233,6 +220,7 @@ func (b *btp2) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		bm.Messages = append(bm.Messages, tpm)
 	}
 
@@ -244,17 +232,58 @@ func (b *btp2) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error) {
 	return rb, nil
 }
 
-func (b *btp2) FinalizedStatus(bls <-chan *types.BMCLinkStatus) {
-
+func (b *btp2) FinalizedStatus(blsc <-chan *types.BMCLinkStatus) {
+	go func() {
+		for {
+			select {
+			case bls := <-blsc:
+				b.clearReceiveStatus(bls)
+			}
+		}
+	}()
 }
 
-func (b *btp2) updateReceiveStatus(bls *types.BMCLinkStatus) {
+func (b *btp2) nextReceiveStatus(bls *types.BMCLinkStatus) *receiveStatus {
+	for i, rs := range b.rss {
+		if bls.Verifier.Height <= rs.Height() {
+			if bls.Verifier.Height == rs.Height() {
+				return b.rss[i+1]
+			}
+			return b.rss[i]
+		}
+	}
+	return nil
+}
+
+func (b *btp2) clearReceiveStatus(bls *types.BMCLinkStatus) {
 	for i, rs := range b.rss {
 		if rs.Height() <= bls.Verifier.Height && rs.Seq() <= bls.RxSeq {
+			b.l.Debugf("clear receive data (height:%d, seq:%d) ", bls.Verifier.Height, bls.RxSeq)
 			b.rss = b.rss[i+1:]
 			return
 		}
 	}
+}
+
+func (b *btp2) getMessage(height int64) (*mbt.MerkleBinaryTree, error) {
+	msgs, err := b.getBtpMessage(height)
+	if err != nil {
+		return nil, err
+	}
+	result := make([][]byte, 0)
+	for _, mg := range msgs {
+		m, err := base64.StdEncoding.DecodeString(mg)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, m)
+	}
+
+	mt, err := mbt.NewMerkleBinaryTree(mbt.HashFuncByUID("eth"), result)
+	if err != nil {
+		return nil, err
+	}
+	return mt, nil
 }
 
 func (b *btp2) Monitoring(bls *types.BMCLinkStatus) error {
@@ -310,6 +339,7 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 		if _, err = codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
 			return err
 		}
+
 		if bh.MainHeight != b.startHeight {
 			msgs, err := b.getBtpMessage(bh.MainHeight)
 			if err != nil {
@@ -317,29 +347,29 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 			}
 
 			b.seq += int64(len(msgs))
-			rs, err := newReceiveStatus(bh.MainHeight, b.seq, msgs)
+			rs, err := newReceiveStatus(bh.MainHeight, b.seq)
 			if err != nil {
 				return err
 			}
 			b.rs = rs
 			b.rss = append(b.rss, rs)
-			b.l.Debugf("monitor info : Height:%d  UpdateNumber:%d  MessageCnt:%d ", bh.MainHeight, bh.UpdateNumber, len(msgs))
+			b.l.Debugf("monitor info : Height:%d  UpdateNumber:%d  MessageCnt:%d  Seq:%d ", bh.MainHeight, bh.UpdateNumber, len(msgs), b.seq)
 			b.rsc <- rs
 		}
 		return nil
 	}, scb, errCb)
 }
 
-func (b *btp2) GetReceiveHeightForSequence(seq int64) *receiveStatus {
+func (b *btp2) GetReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range b.rss {
-		if seq <= rs.Seq() && seq >= rs.Seq() {
+		if rs.Seq() <= seq && seq <= rs.Seq() { //TODO
 			return rs
 		}
 	}
 	return nil
 }
 
-func (b *btp2) GetReceiveHeightForHeight(height int64) *receiveStatus {
+func (b *btp2) GetReceiveStatusForHeight(height int64) *receiveStatus {
 	for _, rs := range b.rss {
 		if rs.Height() == height {
 			return rs

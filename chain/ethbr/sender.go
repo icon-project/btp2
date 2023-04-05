@@ -18,6 +18,7 @@ package ethbr
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -38,11 +39,55 @@ const (
 	txMaxDataSize                 = 524288 //512 * 1024 // 512kB
 	txOverheadScale               = 0.37   //base64 encoding overhead 0.36, rlp and other fields 0.01
 	DefaultGetRelayResultInterval = time.Second
+	MaxQueueSize                  = 100
 )
 
 var (
 	txSizeLimit = int(math.Ceil(txMaxDataSize / (1 + txOverheadScale)))
 )
+
+type Queue struct {
+	values []*relayMessageTx
+}
+
+type relayMessageTx struct {
+	id     int
+	txHash []byte
+}
+
+func NewQueue() *Queue {
+	queue := &Queue{}
+	return queue
+}
+
+func (q *Queue) enqueue(id int, txHash []byte) error {
+	if MaxQueueSize <= len(q.values) {
+		return fmt.Errorf("queue full")
+	}
+	q.values = append(q.values,
+		&relayMessageTx{
+			id:     id,
+			txHash: txHash,
+		})
+	return nil
+}
+
+func (q *Queue) dequeue(id int) {
+	for i, rm := range q.values {
+		if rm.id == id {
+			q.values = q.values[i+1:]
+			break
+		}
+	}
+}
+
+func (q *Queue) isEmpty() bool {
+	return len(q.values) == 0
+}
+
+func (q *Queue) len() int {
+	return len(q.values)
+}
 
 type sender struct {
 	c   *client.Client
@@ -53,17 +98,19 @@ type sender struct {
 	opt struct {
 	}
 	bmc                *binding.BMC
-	rr                 chan btpTypes.RelayResult
+	rr                 chan *btpTypes.RelayResult
 	isFoundOffsetBySeq bool
+	queue              *Queue
 }
 
 func NewSender(src, dst btpTypes.BtpAddress, w client.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
 	s := &sender{
-		src: src,
-		dst: dst,
-		w:   w,
-		l:   l,
-		rr:  make(chan btpTypes.RelayResult),
+		src:   src,
+		dst:   dst,
+		w:     w,
+		l:     l,
+		rr:    make(chan *btpTypes.RelayResult),
+		queue: NewQueue(),
 	}
 
 	b, err := json.Marshal(opt)
@@ -81,7 +128,7 @@ func NewSender(src, dst btpTypes.BtpAddress, w client.Wallet, endpoint string, o
 	return s
 }
 
-func (s *sender) Start() (<-chan btpTypes.RelayResult, error) {
+func (s *sender) Start() (<-chan *btpTypes.RelayResult, error) {
 	return s.rr, nil
 }
 
@@ -110,27 +157,42 @@ func (s *sender) GetMarginForLimit() int64 {
 }
 
 func (s *sender) Relay(rm btpTypes.RelayMessage) (int, error) {
+	//check send queue
+	if MaxQueueSize <= s.queue.len() {
+		return 0, errors.InvalidStateError.New("pending queue full")
+	}
+
 	thp, err := s._relay(rm)
 	if err != nil {
 		return 0, err
 	}
+
+	s.queue.enqueue(rm.Id(), thp.Hash.Bytes())
 	go s.result(rm.Id(), thp)
 	return rm.Id(), nil
 }
 
 func (s *sender) result(id int, txh *client.TransactionHashParam) {
 	_, err := s.GetResult(txh)
+	s.queue.dequeue(id)
+
 	if err != nil {
 		s.l.Debugf("result fail rm id : %d ", id)
 
 		if ec, ok := errors.CoderOf(err); ok {
-			s.rr <- btpTypes.RelayResult{
-				Id:  id,
-				Err: ec.ErrorCode(),
+			s.rr <- &btpTypes.RelayResult{
+				Id:        id,
+				Err:       ec.ErrorCode(),
+				Finalized: true,
 			}
 		}
 	} else {
 		s.l.Debugf("result success rm id : %d ", id)
+		s.rr <- &btpTypes.RelayResult{
+			Id:        id,
+			Err:       -1,
+			Finalized: true,
+		}
 	}
 
 }
@@ -157,7 +219,8 @@ func (s *sender) GetResult(txh *client.TransactionHashParam) (*types.Receipt, er
 			}
 			msgs := strings.Split(revertMsg, ":")
 			if len(msgs) > 2 {
-				code, err := strconv.Atoi(strings.TrimLeft(msgs[1], " "))
+				codeMsg := strings.Split(msgs[1], " ")
+				code, err := strconv.Atoi(codeMsg[len(codeMsg)-1])
 				if err != nil {
 					return nil, err
 				}
@@ -186,7 +249,7 @@ func (s *sender) _relay(rm btpTypes.RelayMessage) (*client.TransactionHashParam,
 
 	tx, err = s.bmc.HandleRelayMessage(t, s.src.String(), rm.Bytes()[:])
 	if err != nil {
-		s.l.Errorf("handleRelayMessage: ", err.Error())
+		s.l.Errorf("handleRelayMessage error: %s, rm id:%s ", err.Error(), rm.Id())
 		return nil, err
 	}
 	txh := tx.Hash()

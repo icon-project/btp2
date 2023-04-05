@@ -1,23 +1,24 @@
 /*
- * Copyright 2021 ICON Foundation
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+* Copyright 2021 ICON Foundation
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
  */
 
 package icon
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -37,11 +38,55 @@ const (
 	DefaultGetRelayResultInterval = time.Second
 	DefaultRelayReSendInterval    = time.Second
 	DefaultStepLimit              = 0x9502f900 //maxStepLimit(invoke), refer https://www.icondev.io/docs/step-estimation
+	MaxQueueSize                  = 100
 )
 
 var (
 	txSizeLimit = int(math.Ceil(txMaxDataSize / (1 + txOverheadScale)))
 )
+
+type Queue struct {
+	values []*relayMessageTx
+}
+
+type relayMessageTx struct {
+	id     int
+	txHash []byte
+}
+
+func NewQueue() *Queue {
+	queue := &Queue{}
+	return queue
+}
+
+func (q *Queue) enqueue(id int, txHash []byte) error {
+	if MaxQueueSize <= len(q.values) {
+		return fmt.Errorf("queue full")
+	}
+	q.values = append(q.values,
+		&relayMessageTx{
+			id:     id,
+			txHash: txHash,
+		})
+	return nil
+}
+
+func (q *Queue) dequeue(id int) {
+	for i, rm := range q.values {
+		if rm.id == id {
+			q.values = q.values[i+1:]
+			break
+		}
+	}
+}
+
+func (q *Queue) isEmpty() bool {
+	return len(q.values) == 0
+}
+
+func (q *Queue) len() int {
+	return len(q.values)
+}
 
 type sender struct {
 	c   *client.Client
@@ -52,17 +97,19 @@ type sender struct {
 	opt struct {
 		StepLimit int64
 	}
-	sc                 chan types.RelayResult
+	rr                 chan *types.RelayResult
 	isFoundOffsetBySeq bool
+	queue              *Queue
 }
 
 func NewSender(src, dst types.BtpAddress, w client.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) types.Sender {
 	s := &sender{
-		src: src,
-		dst: dst,
-		w:   w,
-		l:   l,
-		sc:  make(chan types.RelayResult),
+		src:   src,
+		dst:   dst,
+		w:     w,
+		l:     l,
+		rr:    make(chan *types.RelayResult),
+		queue: NewQueue(),
 	}
 	b, err := json.Marshal(opt)
 	if err != nil {
@@ -78,19 +125,33 @@ func NewSender(src, dst types.BtpAddress, w client.Wallet, endpoint string, opt 
 	return s
 }
 
-func (s *sender) Start() (<-chan types.RelayResult, error) {
-	return s.sc, nil
+func (s *sender) Start() (<-chan *types.RelayResult, error) {
+	return s.rr, nil
 }
 
 func (s *sender) Stop() {
-	close(s.sc)
+	close(s.rr)
 }
 
 func (s *sender) Relay(rm types.RelayMessage) (int, error) {
+	//check send queue
+	if MaxQueueSize <= s.queue.len() {
+		return 0, errors.InvalidStateError.New("pending queue full")
+	}
+	s.l.Debugf("_relay src address:%s, rm id:%d, rm msg:%s", s.src.String(), rm.Id(), hex.EncodeToString(rm.Bytes()[:]))
+
 	thp, err := s._relay(rm)
 	if err != nil {
 		return 0, err
 	}
+
+	b, err := thp.Hash.Value()
+	if err != nil {
+		return 0, err
+	}
+
+	s.queue.enqueue(rm.Id(), b)
+
 	go s.result(rm.Id(), thp)
 	return rm.Id(), nil
 }
@@ -102,6 +163,7 @@ func (s *sender) GetMarginForLimit() int64 {
 func (s *sender) _relay(rm types.RelayMessage) (*client.TransactionHashParam, error) {
 	msg := rm.Bytes()
 	idx := len(msg) / txSizeLimit
+
 	if idx == 0 {
 		rmp := &client.BMCRelayMethodParams{
 			Prev:     s.src.String(),
@@ -129,17 +191,25 @@ func (s *sender) _relay(rm types.RelayMessage) (*client.TransactionHashParam, er
 
 func (s *sender) result(id int, txh *client.TransactionHashParam) {
 	_, err := s.GetResult(txh)
+	s.queue.dequeue(id)
+
 	if err != nil {
 		s.l.Debugf("result fail rm id : %d ", id)
 
 		if ec, ok := errors.CoderOf(err); ok {
-			s.sc <- types.RelayResult{
-				Id:  id,
-				Err: ec.ErrorCode(),
+			s.rr <- &types.RelayResult{
+				Id:        id,
+				Err:       ec.ErrorCode(),
+				Finalized: true,
 			}
 		}
 	} else {
 		s.l.Debugf("result success rm id : %d ", id)
+		s.rr <- &types.RelayResult{
+			Id:        id,
+			Err:       -1,
+			Finalized: true,
+		}
 	}
 }
 
@@ -268,7 +338,7 @@ func mapErrorWithTransactionResult(txr *client.TransactionResult, err error) err
 			err = fmt.Errorf("failure with code:%s, message:%s",
 				txr.Failure.CodeValue, txr.Failure.MessageValue)
 		} else {
-			err = client.NewRevertError(int(fc - client.ResultStatusFailureCodeRevert))
+			err = errors.NewRevertError(int(fc - client.ResultStatusFailureCodeRevert))
 		}
 	}
 	return err

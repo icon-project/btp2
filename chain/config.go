@@ -24,20 +24,21 @@ import (
 )
 
 type BaseConfig struct {
-	Address      types.BtpAddress       `json:"address"`
-	Endpoint     string                 `json:"endpoint"`
-	KeyStoreData json.RawMessage        `json:"key_store"`
-	KeyStorePass string                 `json:"key_password,omitempty"`
-	KeySecret    string                 `json:"key_secret,omitempty"`
-	BridgeMode   bool                   `json:"bridge_mode"`
-	Options      map[string]interface{} `json:"options,omitempty"`
+	Address           types.BtpAddress       `json:"address"`
+	Endpoint          string                 `json:"endpoint"`
+	KeyStoreData      json.RawMessage        `json:"key_store"`
+	KeyStorePass      string                 `json:"key_password,omitempty"`
+	KeySecret         string                 `json:"key_secret,omitempty"`
+	BridgeMode        bool                   `json:"bridge_mode"`
+	LatestResult      bool                   `json:"latest_result"`
+	FilledBlockUpdate bool                   `json:"filled_block_update"`
+	Options           map[string]interface{} `json:"options,omitempty"`
 }
 
 type Config struct {
 	config.FileConfig `json:",squash"` //instead of `mapstructure:",squash"`
 	Src               BaseConfig       `json:"src"`
 	Dst               BaseConfig       `json:"dst"`
-	MaxSizeTx         bool             `json:"maxSizeTx"`
 	Direction         string           `json:"direction"`
 	Offset            int64            `json:"offset"`
 }
