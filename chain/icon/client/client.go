@@ -56,6 +56,10 @@ type Client struct {
 	mtx   sync.Mutex
 }
 
+type SendKeepaliveMessage struct {
+	Keepalive HexInt `json:"keepalive"`
+}
+
 var txSerializeExcludes = map[string]bool{"signature": true}
 
 func (c *Client) SignTransaction(w Wallet, p *TransactionParam) error {
@@ -394,6 +398,24 @@ func (c *Client) Monitor(reqUrl string, reqPtr, respPtr interface{}, cb wsReadCa
 		return err
 	}
 	cb(conn, WSEventInit)
+
+	//Send keepalive data
+	msg := SendKeepaliveMessage{
+		Keepalive: "0x1",
+	}
+	js, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for {
+			time.Sleep(time.Second * 30)
+			if err := conn.WriteJSON(js); err != nil {
+				c.l.Debugf("Failed to send keepalive message to webSocket (errMsg:%v)", err.Error())
+			}
+		}
+	}()
+
 	return c.wsReadJSONLoop(conn, respPtr, cb)
 }
 
