@@ -19,7 +19,6 @@ package client
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -210,18 +209,11 @@ func (c *Client) Poll(cb func(bh *types.Header) error) error {
 		return err
 	}
 	current := new(big.Int).SetUint64(n)
-	var retry = BlockRetryLimit
 	for {
 		select {
 		case <-c.stop:
 			return nil
 		default:
-			// Exhausted all error retries
-			if retry == 0 {
-				c.log.Error("Polling failed, retries exceeded")
-				//l.sysErr <- ErrFatalPolling
-				return fmt.Errorf("Polling failed, retries exceeded")
-			}
 			var bh *types.Header
 			if bh, err = c.GetHeaderByHeight(current); err != nil {
 				if ethereum.NotFound == err {
@@ -229,7 +221,6 @@ func (c *Client) Poll(cb func(bh *types.Header) error) error {
 				} else {
 					c.log.Error("Unable to get block ", current, err)
 				}
-				retry--
 				<-time.After(BlockRetryInterval)
 				continue
 			}
@@ -240,7 +231,6 @@ func (c *Client) Poll(cb func(bh *types.Header) error) error {
 			}
 
 			current.Add(current, big.NewInt(1))
-			retry = BlockRetryLimit
 		}
 	}
 }
