@@ -9,6 +9,7 @@ on:
 jobs:
   run-demo:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -58,6 +59,7 @@ jobs:
 
       - name: Run demo
         working-directory: ./e2edemo
+        timeout-minutes: 5
         run: make run-demo
 
       - name: Stop containers

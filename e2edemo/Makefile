@@ -16,7 +16,6 @@ all:
 
 clean-java:
 	(cd $(JAVASCORE_PATH); $(GRADLE) clean)
-	$(GRADLE) dapp-sample:clean
 
 clean-solidity:
 	$(HARDHAT) clean
@@ -53,6 +52,7 @@ build-xcall-java:
 
 build-dapp-java:
 	@ echo ">>> Build DApp sample javascore" ; \
+	cd $(JAVASCORE_PATH) ; \
 	$(GRADLE) dapp-sample:optimizedJar
 
 build-all: compile build-bmc-java build-bmv-java build-xcall-java build-dapp-java
@@ -74,7 +74,8 @@ deploy-xcall:
 
 deploy-dapp:
 	@ echo ">>> Deploy DApp contracts" ; \
-	$(HARDHAT) $(NETWORK) run scripts/deploy_dapp.ts
+	JAVASCORE_PATH=$(JAVASCORE_PATH) \
+	$(HARDHAT) $(NETWORK) run scripts/setup/deploy_dapp.ts
 
 deploy-all: deploy-bmc deploy-bmv deploy-xcall deploy-dapp
 
