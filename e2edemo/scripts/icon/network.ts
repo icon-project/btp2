@@ -1,5 +1,4 @@
-import IconService from 'icon-sdk-js';
-import Wallet from "icon-sdk-js/build/Wallet";
+import {IconService, Wallet} from 'icon-sdk-js';
 import {ChainConfig} from "../setup/config";
 
 const {IconWallet, HttpProvider} = IconService;

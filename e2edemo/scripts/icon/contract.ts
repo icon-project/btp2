@@ -1,12 +1,10 @@
-import IconService from 'icon-sdk-js';
-import Wallet from "icon-sdk-js/build/Wallet";
+import {
+  IconService, Block, BigNumber, Wallet,
+  SignedTransaction, ConfirmedTransaction, TransactionResult,
+} from 'icon-sdk-js';
 import {IconNetwork} from "./network";
-import Block from "icon-sdk-js/build/data/Formatter/Block";
-import BigNumber from "bignumber.js";
-import TransactionResult from "icon-sdk-js/build/data/Formatter/TransactionResult";
-import ConfirmedTransaction from "icon-sdk-js/build/data/Formatter/ConfirmedTransaction";
 
-const {IconBuilder, IconConverter, SignedTransaction} = IconService;
+const {IconBuilder, IconConverter} = IconService;
 
 export class EventLog {
   scoreAddress: string | undefined
