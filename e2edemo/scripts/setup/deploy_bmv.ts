@@ -1,10 +1,8 @@
 import fs from 'fs';
-import { ethers } from 'hardhat';
-import {Contract} from "../icon/contract";
-import {BMC, BMV, getBtpAddress} from "../icon/btp";
-import {Gov} from "../icon/system";
-import {IconNetwork} from "../icon/network";
+import {ethers} from 'hardhat';
 import IconService from "icon-sdk-js";
+import {Contract, IconNetwork} from "../icon";
+import {Gov, BMC, BMV, getBtpAddress} from "../icon";
 import {Deployments, chainType} from "./config";
 const {IconConverter} = IconService;
 const {JAVASCORE_PATH, BMV_BRIDGE} = process.env

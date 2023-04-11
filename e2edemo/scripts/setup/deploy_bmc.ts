@@ -1,7 +1,6 @@
 import fs from 'fs';
-import { ethers } from 'hardhat';
-import {Contract} from "../icon/contract";
-import {IconNetwork} from "../icon/network";
+import {ethers} from 'hardhat';
+import {Contract, IconNetwork} from "../icon";
 import {Deployments, ChainConfig, chainType} from "./config";
 
 const {JAVASCORE_PATH} = process.env

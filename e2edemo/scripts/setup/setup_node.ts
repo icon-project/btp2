@@ -1,6 +1,5 @@
 import IconService from "icon-sdk-js";
-import {IconNetwork} from "../icon/network";
-import {Chain, Gov} from "../icon/system";
+import {IconNetwork, Chain, Gov} from "../icon";
 
 const {CI_WORKFLOW} = process.env
 const {IconAmount} = IconService;

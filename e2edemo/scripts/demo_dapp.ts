@@ -1,12 +1,10 @@
 import IconService from 'icon-sdk-js';
 import {ethers} from 'hardhat';
-import {IconNetwork} from "./icon/network";
-import {DAppProxy} from "./icon/dapp_proxy";
-import {XCall} from "./icon/xcall";
+import {IconNetwork, getBtpAddress} from "./icon";
+import {XCall, DAppProxy} from "./icon";
 import {BaseContract, BigNumber, ContractReceipt} from "ethers";
 import {Deployments} from "./setup/config";
 import {TypedEvent, TypedEventFilter} from "../typechain-types/common";
-import {getBtpAddress} from "./icon/btp";
 
 const {IconConverter} = IconService;
 const deployments = Deployments.getDefault();
