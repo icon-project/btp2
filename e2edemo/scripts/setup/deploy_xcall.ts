@@ -1,6 +1,5 @@
-import fs from 'fs';
 import {ethers} from 'hardhat';
-import {Contract, IconNetwork, BMC} from "../icon";
+import {Contract, IconNetwork, Jar, BMC} from "../icon";
 import {Deployments, chainType} from "./config";
 
 const {JAVASCORE_PATH} = process.env
@@ -8,8 +7,7 @@ const deployments = Deployments.getDefault();
 
 async function deploy_xcall_java(target: string, chain: any) {
   const iconNetwork = IconNetwork.getNetwork(target);
-  const xcallJar = JAVASCORE_PATH + '/xcall/build/libs/xcall-0.1.0-optimized.jar'
-  const content = fs.readFileSync(xcallJar).toString('hex')
+  const content = Jar.readFromFile(JAVASCORE_PATH, "xcall");
   const xcall = new Contract(iconNetwork)
   const deployTxHash = await xcall.deploy({
     content: content,

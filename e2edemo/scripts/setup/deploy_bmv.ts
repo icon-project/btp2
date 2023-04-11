@@ -1,7 +1,6 @@
-import fs from 'fs';
 import {ethers} from 'hardhat';
 import IconService from "icon-sdk-js";
-import {Contract, IconNetwork} from "../icon";
+import {Contract, IconNetwork, Jar} from "../icon";
 import {Gov, BMC, BMV, getBtpAddress} from "../icon";
 import {Deployments, chainType} from "./config";
 const {IconConverter} = IconService;
@@ -57,8 +56,7 @@ async function get_first_btpblock_header(network: IconNetwork, chain: any) {
 async function deploy_bmv_btpblock_java(srcNetwork: IconNetwork, dstNetwork: IconNetwork,
                                         srcChain: any, dstChain: any) {
   const firstBlockHeader = await get_first_btpblock_header(dstNetwork, dstChain);
-  const bmvJar = JAVASCORE_PATH + '/bmv/btpblock/build/libs/bmv-btpblock-0.1.0-optimized.jar';
-  const content = fs.readFileSync(bmvJar).toString('hex');
+  const content = Jar.readFromFile(JAVASCORE_PATH, "bmv/btpblock");
   const bmv = new Contract(srcNetwork)
   const deployTxHash = await bmv.deploy({
     content: content,
@@ -79,8 +77,7 @@ async function deploy_bmv_btpblock_java(srcNetwork: IconNetwork, dstNetwork: Ico
 }
 
 async function deploy_bmv_bridge_java(srcNetwork: IconNetwork, srcChain: any, dstChain: any) {
-  const bmvJar = JAVASCORE_PATH + '/bmv/bridge/build/libs/bmv-bridge-0.1.0-optimized.jar';
-  const content = fs.readFileSync(bmvJar).toString('hex');
+  const content = Jar.readFromFile(JAVASCORE_PATH, "bmv/bridge");
   const bmv = new Contract(srcNetwork)
   const deployTxHash = await bmv.deploy({
     content: content,

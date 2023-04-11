@@ -1,6 +1,5 @@
-import fs from 'fs';
 import {ethers} from 'hardhat';
-import {Contract, IconNetwork} from "../icon";
+import {Contract, IconNetwork, Jar} from "../icon";
 import {chainType, Deployments} from "./config";
 
 const {JAVASCORE_PATH} = process.env
@@ -8,8 +7,7 @@ const deployments = Deployments.getDefault();
 
 async function deploy_dapp_java(target: string, chain: any) {
   const iconNetwork = IconNetwork.getNetwork(target);
-  const dappJar = `${JAVASCORE_PATH}/dapp-sample/build/libs/dapp-sample-0.1.0-optimized.jar`
-  const content = fs.readFileSync(dappJar).toString('hex')
+  const content = Jar.readFromFile(JAVASCORE_PATH, "dapp-sample");
   const dapp = new Contract(iconNetwork)
   const deployTxHash = await dapp.deploy({
     content: content,

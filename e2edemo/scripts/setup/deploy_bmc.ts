@@ -1,6 +1,5 @@
-import fs from 'fs';
 import {ethers} from 'hardhat';
-import {Contract, IconNetwork} from "../icon";
+import {Contract, IconNetwork, Jar} from "../icon";
 import {Deployments, ChainConfig, chainType} from "./config";
 
 const {JAVASCORE_PATH} = process.env
@@ -10,8 +9,7 @@ async function deploy_java(target: string, chain: any) {
   const iconNetwork = IconNetwork.getNetwork(target);
   console.log(`${target}: deploy BMC for ${chain.network}`)
 
-  const bmcJar = JAVASCORE_PATH + '/bmc/build/libs/bmc-0.1.0-optimized.jar'
-  const content = fs.readFileSync(bmcJar).toString('hex')
+  const content = Jar.readFromFile(JAVASCORE_PATH, "bmc");
   const bmc = new Contract(iconNetwork)
   const deployTxHash = await bmc.deploy({
     content: content,
