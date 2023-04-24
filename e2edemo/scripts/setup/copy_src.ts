@@ -30,5 +30,6 @@ async function main() {
 
 main().catch((error) => {
   console.error(error);
+  console.info('You may be missing the necessary submodules. If so, run `git submodule update --init --recursive`');
   process.exitCode = 1;
 });
