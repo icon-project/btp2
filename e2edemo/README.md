@@ -16,6 +16,15 @@ To run the demo, the following software needs to be installed.
 * jq \[[download](https://github.com/stedolan/jq)\]
 * go \[[download](https://go.dev/doc/install)\]
 
+Additionally, this repo and its submodules must be cloned.
+
+```
+git clone https://github.com/icon-project/btp2.git --recurse-submodules
+```
+
+> **Note**
+> The scripts in this demo use relative paths. All of the following commands must be run from this folder.
+
 
 ## Install required packages
 
