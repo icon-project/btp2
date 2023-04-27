@@ -17,15 +17,16 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 )
 
 var (
-	ErrConnectFail            = fmt.Errorf("fail to connect")
-	ErrSendFailByExpired      = fmt.Errorf("reject by expired")
-	ErrSendFailByFuture       = fmt.Errorf("reject by future")
-	ErrSendFailByOverflow     = fmt.Errorf("reject by overflow")
-	ErrGetResultFailByPending = fmt.Errorf("fail to getresult by pending")
+	ErrConnectFail            = errors.New("fail to connect")
+	ErrSendFailByExpired      = errors.New("reject by expired")
+	ErrSendFailByFuture       = errors.New("reject by future")
+	ErrSendFailByOverflow     = errors.New("reject by overflow")
+	ErrGetResultFailByPending = errors.New("fail to getresult by pending")
 )
 
 const (
