@@ -2,8 +2,6 @@ package db
 
 import (
 	"sync"
-
-	"github.com/icon-project/btp2/common/errors"
 )
 
 type layerBucket struct {
@@ -24,23 +22,19 @@ func (bk *layerBucket) Get(key []byte) ([]byte, error) {
 	return bk.real.Get(key)
 }
 
-func (bk *layerBucket) Has(key []byte) bool {
+func (bk *layerBucket) Has(key []byte) (bool, error) {
 	bk.lock.Lock()
 	defer bk.lock.Unlock()
 
 	if bk.data != nil {
 		if value, ok := bk.data[string(key)]; ok {
-			return value != nil
+			return value != nil, nil
 		}
 	}
 	return bk.real.Has(key)
 }
 
 func (bk *layerBucket) Set(key []byte, value []byte) error {
-	if value == nil {
-		return errors.New("IllegalArgument")
-	}
-
 	bk.lock.Lock()
 	defer bk.lock.Unlock()
 
@@ -135,9 +129,51 @@ func (ldb *layerDB) Close() error {
 	return nil
 }
 
-func NewLayerDB(dbase Database) LayerDB {
-	return &layerDB{
-		real:    dbase,
+type layerDBContext struct {
+	LayerDB
+	flags Flags
+}
+
+func (c *layerDBContext) WithFlags(flags Flags) Context {
+	newFlags := c.flags.Merged(flags)
+	return &layerDBContext{c.LayerDB, newFlags}
+}
+
+func (c *layerDBContext) GetFlag(name string) interface{} {
+	return c.flags.Get(name)
+}
+
+func (c *layerDBContext) Flags() Flags {
+	return c.flags.Clone()
+}
+
+func (ldb *layerDB) WithFlags(flags Flags) Context {
+	return &layerDBContext{ldb, flags}
+}
+
+func (ldb *layerDB) Unwrap() Database {
+	return ldb.real
+}
+
+func NewLayerDB(database Database) LayerDB {
+	ldb := &layerDB{
+		real:    database,
 		buckets: make(map[string]*layerBucket),
+	}
+	if ctx, ok := database.(Context); ok {
+		return &layerDBContext{ldb, ctx.Flags()}
+	} else {
+		return ldb
+	}
+}
+
+func Unwrap(database Database) Database {
+	type unwrapper interface {
+		Unwrap() Database
+	}
+	if layeredDB, ok := database.(unwrapper); ok {
+		return layeredDB.Unwrap()
+	} else {
+		return database
 	}
 }

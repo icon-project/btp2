@@ -238,7 +238,11 @@ func (w *mpWriter) Close() error {
 	return nil
 }
 
-func (c *mpCodec) NewDecoder(r io.Reader) SimpleDecoder {
+func (c *mpCodec) Name() string {
+	return "msgpack"
+}
+
+func (c *mpCodec) NewDecoder(r io.Reader) DecodeAndCloser {
 	return NewDecoder(&mpReader{
 		real: msgpack.NewDecoder(r),
 		size: -1,
@@ -253,7 +257,7 @@ func msgpackNewEncoder(w io.Writer) *msgpack.Encoder {
 	return e
 }
 
-func (c *mpCodec) NewEncoder(w io.Writer) SimpleEncoder {
+func (c *mpCodec) NewEncoder(w io.Writer) EncodeAndCloser {
 	return NewEncoder(&mpWriter{
 		writer: w,
 		real:   msgpackNewEncoder(w),

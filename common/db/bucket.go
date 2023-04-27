@@ -1,14 +1,50 @@
 package db
 
+import (
+	"github.com/icon-project/btp2/common/crypto"
+	"github.com/icon-project/btp2/common/errors"
+)
+
 // Bucket
 type Bucket interface {
 	Get(key []byte) ([]byte, error)
-	Has(key []byte) bool
+	Has(key []byte) (bool, error)
 	Set(key []byte, value []byte) error
 	Delete(key []byte) error
 }
 
 type BucketID string
+
+type Hasher interface {
+	Name() string
+	Hash(value []byte) []byte
+}
+
+type sha3Hasher struct{}
+
+func (h sha3Hasher) Name() string {
+	return "sha3"
+}
+
+func (h sha3Hasher) Hash(v []byte) []byte {
+	return crypto.SHA3Sum256(v)
+}
+
+var hasherMap = map[BucketID]Hasher{
+	MerkleTrie:  sha3Hasher{},
+	BytesByHash: sha3Hasher{},
+}
+
+func RegisterHasher(bk BucketID, hasher Hasher) {
+	if _, ok := hasherMap[bk]; ok {
+		panic("Duplicate BucketID")
+	}
+	hasherMap[bk] = hasher
+}
+
+func (bk BucketID) Hasher() Hasher {
+	return hasherMap[bk]
+}
 
 //	Bucket ID
 const (
@@ -24,14 +60,12 @@ const (
 	// BlockHeaderHashByHeight maps hash of encoded block header from height.
 	BlockHeaderHashByHeight BucketID = "H"
 
-	// BlockV1ByHash maps block V1 from block V1 hash.
-	BlockV1ByHash BucketID = "B"
-
-	// ReceiptV1ByHash maps receipt V1 from tx V3 hash.
-	ReceiptV1ByHash BucketID = "R"
-
 	// ChainProperty is general key value map for chain property.
 	ChainProperty BucketID = "C"
+
+	// ListByMerkleRootBase is the base for the bucket that maps list
+	// from network type dependent merkle root(list)
+	ListByMerkleRootBase BucketID = "L"
 )
 
 // internalKey returns key prefixed with the bucket's id.
@@ -42,10 +76,18 @@ func internalKey(id BucketID, key []byte) []byte {
 	return buf
 }
 
-// nonNilBytes returns empty []byte if bz is nil
-func nonNilBytes(bz []byte) []byte {
-	if bz == nil {
-		return []byte{}
+func DoGet(bk Bucket, key []byte) ([]byte, error) {
+	v, err := bk.Get(key)
+	if v == nil && err == nil {
+		return nil, errors.NotFoundError.New("NotFound")
 	}
-	return bz
+	return v, err
+}
+
+func DoGetWithBucketID(dbase Database, bid BucketID, key []byte) ([]byte, error) {
+	bk, err := dbase.GetBucket(bid)
+	if err != nil {
+		return nil, err
+	}
+	return DoGet(bk, key)
 }

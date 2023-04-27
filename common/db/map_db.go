@@ -4,13 +4,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/log"
 )
 
-const (
-	configLogMapDB = false
-)
+const configLogMapDB = false
+const MapDBBackend BackendType = "mapdb"
 
 func init() {
 	dbCreator := func(name string, dir string) (Database, error) {
@@ -88,20 +86,17 @@ func (t *mapBucket) Get(k []byte) ([]byte, error) {
 	return nil, nil
 }
 
-func (t *mapBucket) Has(k []byte) bool {
+func (t *mapBucket) Has(k []byte) (bool, error) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 	_, ok := t.real[string(k)]
 	if configLogMapDB {
 		log.Printf("mapBucket[%s].Has(%x) -> %v", t.id, k, ok)
 	}
-	return ok
+	return ok, nil
 }
 
 func (t *mapBucket) Set(k, v []byte) error {
-	if len(k) == 0 {
-		return errors.Errorf("Illegal Key:%x", k)
-	}
 	if configLogMapDB {
 		log.Printf("mapBucket[%s].Set(%x,%x)", t.id, k, v)
 	}

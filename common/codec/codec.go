@@ -4,23 +4,18 @@ import (
 	"encoding"
 	"errors"
 	"io"
+	"math/big"
 	"reflect"
 	"sort"
 
 	cerrors "github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/intconv"
 )
 
-type SimpleEncoder interface {
-	Encode(v interface{}) error
-}
-
-type SimpleDecoder interface {
-	Decode(v interface{}) error
-}
-
 type codecImpl interface {
-	NewDecoder(r io.Reader) SimpleDecoder
-	NewEncoder(w io.Writer) SimpleEncoder
+	Name() string
+	NewDecoder(r io.Reader) DecodeAndCloser
+	NewEncoder(w io.Writer) EncodeAndCloser
 }
 
 type Codec interface {
@@ -31,7 +26,7 @@ type Codec interface {
 	UnmarshalFromBytes(b []byte, v interface{}) ([]byte, error)
 	MustMarshalToBytes(v interface{}) []byte
 	MustUnmarshalFromBytes(b []byte, v interface{}) []byte
-	NewEncoderBytes(b *[]byte) SimpleEncoder
+	NewEncoderBytes(b *[]byte) EncodeAndCloser
 }
 
 type Encoder interface {
@@ -41,12 +36,25 @@ type Encoder interface {
 	EncodeListOf(objs ...interface{}) error
 }
 
+type EncodeAndCloser interface {
+	Encoder
+	Close() error
+}
+
 type Decoder interface {
+	Skip(cnt int) error
 	Decode(o interface{}) error
 	DecodeMulti(objs ...interface{}) (int, error)
+	DecodeAll(objs ...interface{}) error
 	DecodeBytes() ([]byte, error)
 	DecodeList() (Decoder, error)
 	DecodeListOf(objs ...interface{}) error
+	SetMaxBytes(sz int) bool
+}
+
+type DecodeAndCloser interface {
+	Decoder
+	Close() error
 }
 
 type EncodeSelfer interface {
@@ -55,6 +63,14 @@ type EncodeSelfer interface {
 
 type DecodeSelfer interface {
 	RLPDecodeSelf(d Decoder) error
+}
+
+type WriteSelfer interface {
+	RLPWriteSelf(w Writer) error
+}
+
+type ReadSelfer interface {
+	RLPReadSelf(w Reader) error
 }
 
 type Unmarshaler interface {
@@ -97,7 +113,6 @@ var (
 )
 
 type encoderImpl struct {
-	isMap bool
 	real  Writer
 	child *encoderImpl
 }
@@ -117,6 +132,10 @@ func (e *encoderImpl) flushAndClose() error {
 		return err
 	}
 	return e.real.Close()
+}
+
+func (e *encoderImpl) Close() error {
+	return e.flushAndClose()
 }
 
 func (e *encoderImpl) EncodeList() (Encoder, error) {
@@ -145,11 +164,19 @@ func (e *encoderImpl) encodeMap() (*encoderImpl, error) {
 	return e.child, nil
 }
 
+var bigIntPtrType = reflect.TypeOf((*big.Int)(nil))
+
+var writeSelferType = reflect.TypeOf((*WriteSelfer)(nil)).Elem()
 var encodeSelferType = reflect.TypeOf((*EncodeSelfer)(nil)).Elem()
 var binaryMarshaler = reflect.TypeOf((*encoding.BinaryMarshaler)(nil)).Elem()
 var codecMarshaler = reflect.TypeOf((*Marshaler)(nil)).Elem()
 
 func (e *encoderImpl) tryCustom(v reflect.Value) (bool, error) {
+	if v.Type().Implements(writeSelferType) {
+		if i, ok := v.Interface().(WriteSelfer); ok {
+			return true, i.RLPWriteSelf(e.real)
+		}
+	}
 	if v.Type().Implements(encodeSelferType) {
 		if i, ok := v.Interface().(EncodeSelfer); ok {
 			if err := i.RLPEncodeSelf(e); err == nil {
@@ -175,6 +202,14 @@ func (e *encoderImpl) tryCustom(v reflect.Value) (bool, error) {
 				return true, err
 			}
 			return true, e.real.WriteRaw(b)
+		}
+	}
+	if v.Type().ConvertibleTo(bigIntPtrType) {
+		bi := v.Interface().(*big.Int)
+		if bi != nil {
+			return true, e.Encode(intconv.BigIntToBytes(bi))
+		} else {
+			return true, e.Encode(nil)
 		}
 	}
 	return false, nil
@@ -218,13 +253,21 @@ func encodeRecursiveFields(e *encoderImpl, v reflect.Value) error {
 	if v.Kind() != reflect.Struct {
 		return nil
 	}
+	vt := v.Type()
 	n := v.NumField()
 	for i := 0; i < n; i++ {
 		fv := v.Field(i)
-		if !fv.CanInterface() {
+		ft := vt.Field(i)
+		if ft.Anonymous && ft.Type.Kind() == reflect.Interface {
+			continue
+		}
+		if ft.Anonymous && ft.Type.Kind() == reflect.Struct {
 			if err := encodeRecursiveFields(e, fv); err != nil {
 				return err
 			}
+			continue
+		}
+		if !fv.CanInterface() {
 			continue
 		}
 		if err := e.encodeValue(fv); err != nil {
@@ -385,6 +428,20 @@ func (d *decoderImpl) flush() error {
 	return nil
 }
 
+func (d *decoderImpl) Close() error {
+	if err := d.flush(); err != nil {
+		return err
+	}
+	return d.real.Close()
+}
+
+func (d *decoderImpl) Skip(n int) error {
+	if err := d.flush(); err != nil {
+		return err
+	}
+	return d.real.Skip(n)
+}
+
 func (d *decoderImpl) Decode(o interface{}) error {
 	if err := d.flush(); err != nil {
 		return err
@@ -419,6 +476,14 @@ func (d *decoderImpl) DecodeMulti(objs ...interface{}) (int, error) {
 	return len(objs), nil
 }
 
+func (d *decoderImpl) DecodeAll(objs ...interface{}) error {
+	if _, err := d.DecodeMulti(objs...); err != nil {
+		return ErrInvalidFormat
+	} else {
+		return nil
+	}
+}
+
 func (d *decoderImpl) DecodeListOf(objs ...interface{}) error {
 	if err := d.flush(); err != nil {
 		return err
@@ -435,11 +500,26 @@ func (d *decoderImpl) DecodeListOf(objs ...interface{}) error {
 	return d.flush()
 }
 
+func (d *decoderImpl) SetMaxBytes(sz int) bool {
+	type setMaxByteser interface {
+		SetMaxBytes(sz int)
+	}
+	if ri, ok := d.real.(setMaxByteser); ok {
+		ri.SetMaxBytes(sz)
+		return true
+	}
+	return false
+}
+
+var readSelferType = reflect.TypeOf((*ReadSelfer)(nil)).Elem()
 var rlpDecodeSelferType = reflect.TypeOf((*DecodeSelfer)(nil)).Elem()
 var binaryUnmarshaler = reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem()
 var codecUnmarshaler = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
 
 func (d *decoderImpl) tryCustom(v reflect.Value) (bool, error) {
+	if v.Type().Implements(readSelferType) {
+		return true, v.Interface().(ReadSelfer).RLPReadSelf(d.real)
+	}
 	if v.Type().Implements(rlpDecodeSelferType) {
 		if err := v.Interface().(DecodeSelfer).RLPDecodeSelf(d); err == nil {
 			return true, d.flush()
@@ -463,6 +543,18 @@ func (d *decoderImpl) tryCustom(v reflect.Value) (bool, error) {
 		}
 		return true, u.UnmarshalRLP(b)
 	}
+	if v.Type().ConvertibleTo(bigIntPtrType) {
+		bi := v.Interface().(*big.Int)
+		b, err := d.real.ReadBytes()
+		if err != nil {
+			return true, err
+		}
+		if v := intconv.BigIntSetBytes(bi, b); v != nil {
+			return true, nil
+		} else {
+			return true, ErrInvalidFormat
+		}
+	}
 	return false, nil
 }
 
@@ -483,18 +575,27 @@ func decodeRecursiveFields(d *decoderImpl, elem reflect.Value) error {
 	if elem.Kind() != reflect.Struct {
 		return nil
 	}
+	et := elem.Type()
 	n := elem.NumField()
 	for i := 0; i < n; i++ {
 		fv := elem.Field(i)
-		if !fv.CanSet() {
+		ft := et.Field(i)
+		if ft.Anonymous && ft.Type.Kind() == reflect.Interface {
+			continue
+		}
+		if ft.Anonymous && ft.Type.Kind() == reflect.Struct {
 			if err := decodeRecursiveFields(d, fv); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := d.decodeNullableValue(fv.Addr()); err != nil {
+		if !fv.CanSet() {
+			continue
+		}
+		if err := d.decodeValue(fv.Addr()); err != nil {
 			if err == io.EOF {
-				break
+				fv.Set(reflect.Zero(fv.Type()))
+				continue
 			}
 			return err
 		}
@@ -586,7 +687,11 @@ func (d *decoderImpl) decodeValue(v reflect.Value) error {
 	case reflect.Ptr:
 		v2 := reflect.New(elem.Type().Elem())
 		if err := d.decodeValue(v2); err != nil {
-			return err
+			if err == ErrNilValue {
+				v2 = reflect.Zero(elem.Type())
+			} else {
+				return err
+			}
 		}
 		elem.Set(v2)
 		return nil
@@ -677,10 +782,10 @@ func (d *decoderImpl) decode(o interface{}) error {
 	}
 }
 
-func NewEncoder(w Writer) Encoder {
+func NewEncoder(w Writer) EncodeAndCloser {
 	return &encoderImpl{real: w}
 }
 
-func NewDecoder(r Reader) Decoder {
+func NewDecoder(r Reader) DecodeAndCloser {
 	return &decoderImpl{real: r}
 }
