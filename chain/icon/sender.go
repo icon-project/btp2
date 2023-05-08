@@ -320,7 +320,8 @@ func (s *sender) GetResult(txh *client.TransactionHashParam) (*client.Transactio
 		if err != nil {
 			if je, ok := err.(*jsonrpc.Error); ok {
 				switch je.Code {
-				case client.JsonrpcErrorCodePending, client.JsonrpcErrorCodeExecuting:
+				//TODO add notFound timeout
+				case client.JsonrpcErrorCodePending, client.JsonrpcErrorCodeExecuting, client.JsonrpcErrorCodeNotFound:
 					<-time.After(DefaultGetRelayResultInterval)
 					continue
 				}
