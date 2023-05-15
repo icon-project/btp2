@@ -79,7 +79,7 @@ func NewLink(cfg *Config, srcWallet wallet.Wallet, dstWallet wallet.Wallet, modL
 			}
 		}
 	}
-	return nil
+
 }
 
 func newLink(s string, cfg chain.Config, l log.Logger, w wallet.Wallet, linkErrCh chan error) (types.Link, error) {
