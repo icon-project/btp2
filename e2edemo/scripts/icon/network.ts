@@ -1,8 +1,8 @@
+import fs from 'fs';
 import {IconService, Wallet} from 'icon-sdk-js';
 import {ChainConfig} from "../setup/config";
 
 const {IconWallet, HttpProvider} = IconService;
-const {PWD} = process.env;
 
 export class IconNetwork {
   iconService: IconService;
@@ -28,17 +28,19 @@ export class IconNetwork {
     const config: any = ChainConfig.getChain(target);
     const httpProvider = new HttpProvider(config.endpoint);
     const iconService = new IconService(httpProvider);
-    let keystorePath: string = config.keystore;
-    if (!keystorePath.startsWith('/')) {
-      // convert to absolute path
-      keystorePath = `${PWD}/${keystorePath}`;
-    }
-    const keystore = require(keystorePath);
-    const wallet = IconWallet.loadKeystore(keystore, config.keypass, false);
+    const keystore = this.readFile(config.keystore);
+    const keypass = config.keysecret
+      ? this.readFile(config.keysecret)
+      : config.keypass;
+    const wallet = IconWallet.loadKeystore(keystore, keypass, false);
     const nid = parseInt(config.network.split(".")[0], 16);
     const network = new this(iconService, nid, wallet);
     this.instances.set(target, network);
     return network;
+  }
+
+  private static readFile(path: string) {
+    return fs.readFileSync(path).toString();
   }
 
   async getTotalSupply() {

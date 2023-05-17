@@ -4,13 +4,13 @@
       "network": "0x3.icon",
       "endpoint": "http://localhost:9080/api/v3/icon_dex",
       "keystore": "./docker/icon/config/keystore.json",
-      "keypass": "gochain"
+      "keysecret": "./docker/icon/config/keysecret"
     },
     "icon1": {
       "network": "0x101.icon",
       "endpoint": "http://localhost:9180/api/v3/icon_dex",
       "keystore": "./docker/icon/config/keystore.json",
-      "keypass": "gochain"
+      "keysecret": "./docker/icon/config/keysecret"
     },
     "hardhat": {
       "network": "0x539.hardhat",
