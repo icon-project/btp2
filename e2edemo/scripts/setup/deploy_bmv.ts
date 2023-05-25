@@ -97,7 +97,8 @@ async function deploy_bmv_bridge_java(srcNetwork: IconNetwork, srcChain: any, ds
 
 async function deploy_bmv(src: string, dst: string, srcChain: any, dstChain: any) {
   const srcNetwork = IconNetwork.getNetwork(src);
-  switch (chainType(dstChain)) {
+  const dstChainType = chainType(dstChain);
+  switch (dstChainType) {
     case 'icon':
       const dstNetwork = IconNetwork.getNetwork(dst);
       // deploy BMV-BTPBlock for src network
@@ -137,7 +138,7 @@ async function deploy_bmv(src: string, dst: string, srcChain: any, dstChain: any
       break;
 
     default:
-      throw new Error(`Unknown chain type: ${chainType(dstChain)}`);
+      throw new Error(`Unknown chain type: ${dstChainType}`);
   }
 
   // update deployments
@@ -146,7 +147,7 @@ async function deploy_bmv(src: string, dst: string, srcChain: any, dstChain: any
   deployments.save();
 }
 
-async function setup_link_icon(src: string, srcChain:any, dstChain: any) {
+async function setup_link_icon(src: string, srcChain: any, dstChain: any) {
   const srcNetwork = IconNetwork.getNetwork(src);
   const bmc = new BMC(srcNetwork, srcChain.contracts.bmc);
   const dstBmcAddr = getBtpAddress(dstChain.network, dstChain.contracts.bmc);
@@ -177,7 +178,7 @@ async function setup_link_icon(src: string, srcChain:any, dstChain: any) {
     })
 }
 
-async function setup_link_hardhat(src: string, srcChain: any, dstChain: any) {
+async function setup_link_solidity(src: string, srcChain: any, dstChain: any) {
   const bmcm = await ethers.getContractAt('BMCManagement', srcChain.contracts.bmcm)
   const dstBmcAddr = getBtpAddress(dstChain.network, dstChain.contracts.bmc);
 
@@ -215,7 +216,7 @@ async function setup_link(src: string, dst: string, srcChain: any, dstChain: any
       await setup_link_icon(dst, dstChain, srcChain);
       break;
     case 'hardhat':
-      await setup_link_hardhat(dst, dstChain, srcChain);
+      await setup_link_solidity(dst, dstChain, srcChain);
       break;
     default:
       throw new Error(`Unknown chain type: ${chainType(dstChain)}`);
