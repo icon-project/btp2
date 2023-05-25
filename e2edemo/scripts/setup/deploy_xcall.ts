@@ -7,7 +7,7 @@ const deployments = Deployments.getDefault();
 
 async function deploy_xcall_java(target: string, chain: any) {
   const iconNetwork = IconNetwork.getNetwork(target);
-  const content = Jar.readFromFile(JAVASCORE_PATH, "xcall");
+  const content = Jar.readFromFile(JAVASCORE_PATH, "xcall", "0.6.1");
   const xcall = new Contract(iconNetwork)
   const deployTxHash = await xcall.deploy({
     content: content,
