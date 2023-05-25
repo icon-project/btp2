@@ -96,8 +96,8 @@ async function setup_node() {
   console.log(`ICON: pubkey: ${pubkey}`)
   if (pubkey == undefined) {
     console.log('ICON: register PRep node publicKey')
-    // prefixing "04" for indicating uncompressed format
-    const pkey = '0x04' + iconNetwork.wallet.getPublicKey();
+    // register node publicKey in compressed form
+    const pkey = iconNetwork.wallet.getPublicKey(true);
     await chain.registerPRepNodePublicKey(prepAddress, pkey)
       .then((txHash) => chain.getTxResult(txHash))
       .then((result) => {
