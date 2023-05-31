@@ -271,11 +271,16 @@ func (l *Link) appendRelayMessage() error {
 
 		rm := &relayMessage{
 			id:       rand.Int(),
-			bls:      l.bls,
+			bls:      &types.BMCLinkStatus{},
 			bpHeight: l.r.GetHeightForSeq(l.bls.RxSeq),
 			message:  m,
 			rmis:     rmi,
 		}
+
+		rm.bls.TxSeq = l.bls.TxSeq
+		rm.bls.RxSeq = l.bls.RxSeq
+		rm.bls.Verifier.Height = l.bls.Verifier.Height
+		copy(rm.bls.Verifier.Extra, l.bls.Verifier.Extra)
 
 		rm.sendingStatus = false
 		l.rms = append(l.rms, rm)
