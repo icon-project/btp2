@@ -56,11 +56,18 @@ Error: ICON: need to wait until the next term for decentralization
 ```
 
 As the error message said, you need to wait until the next term
-(default is 100, see `termPeriod` in `./docker/icon/config/icon_config.json`)
+(default is 100, see `termPeriod` in [`./docker/icon/config/icon_config.json`](./docker/icon/config/icon_config.json))
 The node setup would be completed if you can see the following message when you run the `make setup-node` command again.
 ```
 ICON: node setup completed
 ```
+
+> **Note**
+> The above setup process has been improved.
+> If you add `CI_WORKFLOW=true` environment variable, it will automatically retry every 10 seconds.
+> ```
+> CI_WORKFLOW=true make setup-node
+> ```
 
 ## Build and Deploy contracts
 
@@ -102,7 +109,6 @@ Open a terminal window and run the following command to start the relay.
 ```
 ./relay.sh
 ```
-
 
 > **Note**
 > If you deployed BMV for Bridge in the previous step, add `BMV_BRIDGE=true` environment variable as follows.
