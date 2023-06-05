@@ -80,7 +80,8 @@ func NewEthBridge(src, dst btpTypes.BtpAddress, endpoint string, l log.Logger) *
 
 func (e *ethbr) Start(bs *btpTypes.BMCLinkStatus) (<-chan link.ReceiveStatus, error) {
 	go func() {
-		e.Monitoring(bs) //TODO error handling
+		err := e.Monitoring(bs)
+		e.l.Panicf("Unknown monitoring error occurred  (err : %v)", err)
 	}()
 
 	return e.rsc, nil

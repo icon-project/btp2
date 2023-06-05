@@ -118,7 +118,8 @@ func (b *btp2) Start(bls *types.BMCLinkStatus) (<-chan link.ReceiveStatus, error
 	}
 
 	go func() {
-		b.Monitoring(bls) //TODO error handling
+		err := b.Monitoring(bls)
+		b.l.Panicf("Unknown monitoring error occurred  (err : %v)", err)
 	}()
 
 	return b.rsc, nil
@@ -299,7 +300,7 @@ func (b *btp2) Monitoring(bls *types.BMCLinkStatus) error {
 
 	onErr := func(conn *websocket.Conn, err error) {
 		b.l.Debugf("onError %s err:%+v", conn.LocalAddr().String(), err)
-		_ = conn.Close()
+		b.c.CloseMonitor(conn)
 		//Restart Monitoring
 		ls := &types.BMCLinkStatus{}
 		ls.TxSeq = b.rs.Seq()

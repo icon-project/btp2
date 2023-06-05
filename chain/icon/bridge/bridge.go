@@ -42,6 +42,7 @@ type bridge struct {
 	nid         int64
 	rsc         chan link.ReceiveStatus
 	rss         []*receiveStatus
+	rs          *receiveStatus
 	startHeight int64
 }
 
@@ -79,6 +80,7 @@ func NewBridge(src, dst types.BtpAddress, endpoint string, l log.Logger) *bridge
 		l:   l,
 		rsc: make(chan link.ReceiveStatus),
 		rss: make([]*receiveStatus, 0),
+		rs:  &receiveStatus{},
 	}
 	c.c = client.NewClient(endpoint, l)
 	return c
@@ -195,7 +197,7 @@ func (b *bridge) FinalizedStatus(blsc <-chan *types.BMCLinkStatus) {
 	}()
 }
 
-//TODO Refactoring reduplication func
+// TODO Refactoring reduplication func
 func (b *bridge) getBtpMessage(height int64) ([]string, error) {
 	pr := &client.BTPBlockParam{Height: client.HexInt(intconv.FormatInt(height)), NetworkId: client.HexInt(intconv.FormatInt(b.nid))}
 	mgs, err := b.c.GetBTPMessage(pr)
@@ -219,7 +221,13 @@ func (b *bridge) Monitoring(bs *types.BMCLinkStatus) error {
 
 	onErr := func(conn *websocket.Conn, err error) {
 		b.l.Debugf("onError %s err:%+v", conn.LocalAddr().String(), err)
-		_ = conn.Close()
+		b.c.CloseMonitor(conn)
+		//Restart Monitoring
+		ls := &types.BMCLinkStatus{}
+		ls.TxSeq = b.rs.Seq()
+		ls.Verifier.Height = b.rs.Height()
+		b.l.Debugf("Restart Monitoring")
+		b.Monitoring(ls)
 	}
 	onConn := func(conn *websocket.Conn) {
 		b.l.Debugf("ReceiveLoop monitorBTP2Block height:%d seq:%d networkId:%d connected %s",
@@ -233,13 +241,18 @@ func (b *bridge) Monitoring(bs *types.BMCLinkStatus) error {
 	return nil
 }
 
-func (b *bridge) monitorBTP2Block(req *client.BTPRequest, bs *types.BMCLinkStatus, scb func(conn *websocket.Conn), errCb func(*websocket.Conn, error)) error {
+func (b *bridge) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus, scb func(conn *websocket.Conn), errCb func(*websocket.Conn, error)) error {
 	offset, err := b.c.GetBTPLinkOffset(b.src, b.dst)
 	if err != nil {
 		return err
 	}
 	//BMC.seq starts with 1 and BTPBlock.FirstMessageSN starts with 0
 	offset += 1
+
+	if b.rs.Height() == 0 {
+		b.rs.height = bls.Verifier.Height
+		b.rs.seq = bls.RxSeq
+	}
 
 	return b.c.MonitorBTP(req, func(conn *websocket.Conn, v *client.BTPNotification) error {
 		h, err := base64.StdEncoding.DecodeString(v.Header)
@@ -258,10 +271,11 @@ func (b *bridge) monitorBTP2Block(req *client.BTPRequest, bs *types.BMCLinkStatu
 			}
 			sn := offset + bh.UpdateNumber>>1
 
-			rs, err := newReceiveStatus(bh.MainHeight, bs.RxSeq, sn, msgs, b.dst)
+			rs, err := newReceiveStatus(bh.MainHeight, bls.RxSeq, sn, msgs, b.dst)
 			if err != nil {
 				return err
 			}
+			b.rs = rs
 			b.rss = append(b.rss, rs)
 			b.l.Debugf("monitor info : Height:%d  UpdateNumber:%d  MessageCnt:%d ", bh.MainHeight, bh.UpdateNumber, len(msgs))
 

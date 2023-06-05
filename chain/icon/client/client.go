@@ -388,13 +388,15 @@ func (c *Client) Monitor(reqUrl string, reqPtr, respPtr interface{}, cb wsReadCa
 	}
 	conn, err := c.wsConnect(reqUrl, nil)
 	if err != nil {
-		return errors.ErrConnectFail
+		c.l.Debugf("Failed connection to icon network (errMsg:%v)", err.Error())
+		cb(conn, err)
 	}
 	defer func() {
 		c.l.Debugf("Monitor finish %s", conn.LocalAddr().String())
 		c.wsClose(conn)
 	}()
 	if err = c.wsRequest(conn, reqPtr); err != nil {
+		c.l.Debugf("Invalid reqeust (errMsg:%v)", err.Error())
 		return err
 	}
 	cb(conn, WSEventInit)
@@ -412,6 +414,7 @@ func (c *Client) Monitor(reqUrl string, reqPtr, respPtr interface{}, cb wsReadCa
 			time.Sleep(time.Second * 30)
 			if err := conn.WriteJSON(js); err != nil {
 				c.l.Debugf("Failed to send keepalive message to webSocket (errMsg:%v)", err.Error())
+				return
 			}
 		}
 	}()

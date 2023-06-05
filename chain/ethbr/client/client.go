@@ -261,11 +261,18 @@ func (c *Client) MonitorBlock(br *BlockRequest, cb func(b *BlockNotification) er
 		if h == nil {
 			h = new(big.Int).Set(br.Height)
 			for ; h.Cmp(bh.Number) < 0; h = h.Add(h, one) {
-				if tbh, err := c.GetHeaderByHeight(h); err != nil {
-					c.log.Errorf("failure GetHeaderByHeight(%v) err:%+v", h, err)
-					return err
-				} else if err = onBlockHeader(tbh); err != nil {
-					return err
+				for {
+					tbh, err := c.GetHeaderByHeight(h)
+					if err != nil {
+						c.log.Debugf("failure GetHeaderByHeight(%v) err:%+v", h, err)
+						continue
+					} else {
+						err = onBlockHeader(tbh)
+						if err != nil {
+							return err
+						}
+						break
+					}
 				}
 			}
 		}
