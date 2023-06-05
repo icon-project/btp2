@@ -16,11 +16,12 @@ export class XCall extends Contract {
     })
   }
 
-  executeCall(reqId: string) {
+  executeCall(reqId: string, data: string) {
     return this.invoke({
       method: 'executeCall',
       params: {
-        _reqId: reqId
+        _reqId: reqId,
+        _data: data
       }
     })
   }
