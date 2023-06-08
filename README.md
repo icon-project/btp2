@@ -51,3 +51,4 @@ This is a reference `relay` implementation for BTP 2.0 protocol.
 
 ## References
 * [ICON BTP Standard](https://github.com/icon-project/IIPs/blob/master/IIPS/iip-25.md)
+* [ICON Docs - Sending a message with xCall](https://docs.icon.community/cross-chain-communication/xcall/sending-a-message-with-xcall)
