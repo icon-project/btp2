@@ -80,10 +80,11 @@ function isEVMChain(chain: any) {
 
 async function sendMessageFromDApp(src: string, srcChain: any, dstChain: any, msg: string,
                                    rollback?: string) {
+  const isRollback = rollback ? true : false;
   if (isIconChain(srcChain)) {
     const iconNetwork = IconNetwork.getNetwork(src);
     const xcallSrc = new XCall(iconNetwork, srcChain.contracts.xcall);
-    const fee = await xcallSrc.getFee(dstChain.network, false);
+    const fee = await xcallSrc.getFee(dstChain.network, isRollback);
     console.log('fee=' + fee);
 
     const dappSrc = new DAppProxy(iconNetwork, srcChain.contracts.dapp);
@@ -101,7 +102,7 @@ async function sendMessageFromDApp(src: string, srcChain: any, dstChain: any, ms
       });
   } else if (isEVMChain(srcChain)) {
     const xcallSrc = await ethers.getContractAt('CallService', srcChain.contracts.xcall);
-    const fee = await xcallSrc.getFee(dstChain.network, false);
+    const fee = await xcallSrc.getFee(dstChain.network, isRollback);
     console.log('fee=' + fee);
 
     const dappSrc = await ethers.getContractAt('DAppProxySample', srcChain.contracts.dapp);
