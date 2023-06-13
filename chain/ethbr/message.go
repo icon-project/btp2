@@ -89,12 +89,12 @@ func (m *MessageProof) LastSeqNum() int64 {
 	return m.lastSeq
 }
 
-func NewMessageProof(bs *types.BMCLinkStatus, ls int64, rps []*client.ReceiptProof) (*MessageProof, error) {
+func NewMessageProof(bs *types.BMCLinkStatus, startSeq, lastSeq int64, rps []*client.ReceiptProof) (*MessageProof, error) {
 	//update bls
 	nextBls := &types.BMCLinkStatus{}
 	nextBls.Verifier.Height = bs.Verifier.Height
 	nextBls.TxSeq = bs.TxSeq
-	nextBls.RxSeq = ls
+	nextBls.RxSeq = lastSeq
 
 	rm := &client.RelayMessage{
 		Receipts: make([][]byte, 0),
@@ -133,7 +133,8 @@ func NewMessageProof(bs *types.BMCLinkStatus, ls int64, rps []*client.ReceiptPro
 	}
 
 	return &MessageProof{
-		lastSeq: ls,
+		startSeq: startSeq,
+		lastSeq:  lastSeq,
 		relayMessageItem: relayMessageItem{
 			it:      link.TypeMessageProof,
 			payload: b,

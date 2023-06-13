@@ -25,9 +25,10 @@ import (
 )
 
 type receiveStatus struct {
-	height int64
-	seq    int64
-	rps    []*client.ReceiptProof
+	height   int64
+	startSeq int64
+	lastSeq  int64
+	rps      []*client.ReceiptProof
 }
 
 func (r *receiveStatus) Height() int64 {
@@ -35,14 +36,23 @@ func (r *receiveStatus) Height() int64 {
 }
 
 func (r *receiveStatus) Seq() int64 {
-	return r.seq
+	return r.lastSeq
 }
 
-func newReceiveStatus(height, seq int64, rps []*client.ReceiptProof) (*receiveStatus, error) {
+func (r *receiveStatus) StartSeq() int64 {
+	return r.startSeq
+}
+
+func (r *receiveStatus) LastSeq() int64 {
+	return r.lastSeq
+}
+
+func newReceiveStatus(height, startSeq, lastSeq int64, rps []*client.ReceiptProof) (*receiveStatus, error) {
 	return &receiveStatus{
-		height: height,
-		seq:    seq,
-		rps:    rps,
+		height:   height,
+		startSeq: startSeq,
+		lastSeq:  lastSeq,
+		rps:      rps,
 	}, nil
 }
 
@@ -113,7 +123,7 @@ func (e *ethbr) BuildBlockProof(bls *btpTypes.BMCLinkStatus, height int64) (link
 
 func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (link.MessageProof, error) {
 	var rmSize int
-	var seq int
+	var seq int64
 
 	rps := make([]*client.ReceiptProof, 0)
 	rs := e.GetReceiveStatusForSequence(bls.RxSeq + 1)
@@ -133,20 +143,20 @@ func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (lin
 			}
 			rps = append(rps, trp)
 
-			for _, e := range rs.rps[i].Events {
-				size := sizeOfEvent(e)
+			for _, event := range rs.rps[i].Events {
+				size := sizeOfEvent(event)
 
 				if (int(limit) < rmSize+size) && rmSize > 0 {
-					return NewMessageProof(bls, bls.RxSeq+i, rps)
+					return NewMessageProof(bls, bls.RxSeq, seq, rps)
 				}
-				trp.Events = append(trp.Events, e)
-				seq += 1
+				trp.Events = append(trp.Events, event)
+				seq = event.Sequence.Int64()
 				rmSize += size
 			}
 
 			//last event
 			if int(limit) < rmSize {
-				return NewMessageProof(bls, bls.RxSeq+i, rps)
+				return NewMessageProof(bls, bls.RxSeq, seq, rps)
 			}
 
 			//remove last receipt if empty
@@ -155,7 +165,7 @@ func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (lin
 			}
 		}
 
-		return NewMessageProof(bls, bls.RxSeq+int64(seq), rps)
+		return NewMessageProof(bls, bls.RxSeq, seq, rps)
 	}
 	return nil, nil
 }
@@ -236,20 +246,28 @@ func (e *ethbr) Monitoring(bs *btpTypes.BMCLinkStatus) error {
 
 	return e.c.MonitorBlock(br,
 		func(v *client.BlockNotification) error {
+
 			if len(v.Logs) > 0 {
+				var startSeq int64
+				var lastSeq int64
 				rpsMap := make(map[uint]*client.ReceiptProof)
 			EpLoop:
 				for _, el := range v.Logs {
 					evt, err := logToEvent(&el)
-
-					e.l.Debugf("event[seq:%d] seq:%d dst:%s",
-						evt.Sequence, e.seq, e.dst.String())
 					if err != nil {
 						return err
 					}
+
+					e.l.Debugf("event[seq:%d] seq:%d dst:%s",
+						evt.Sequence, e.seq, e.dst.String())
 					if evt.Sequence.Int64() <= e.seq {
 						continue EpLoop
 					}
+
+					if startSeq == 0 {
+						startSeq = evt.Sequence.Int64()
+					}
+					lastSeq = evt.Sequence.Int64()
 					//below statement is unnecessary if 'next' is indexed
 					dstHash := crypto.Keccak256Hash([]byte(e.dst.String()))
 					if !bytes.Equal(evt.Next, dstHash.Bytes()) {
@@ -275,15 +293,15 @@ func (e *ethbr) Monitoring(bs *btpTypes.BMCLinkStatus) error {
 					sort.Slice(rps, func(i int, j int) bool {
 						return rps[i].Index < rps[j].Index
 					})
-					e.seq = rps[len(rps)-1].Events[len(rps[len(rps)-1].Events)-1].Sequence.Int64()
-					rs, err := newReceiveStatus(v.Height.Int64(), e.seq, rps)
+					e.seq = lastSeq
+					rs, err := newReceiveStatus(v.Height.Int64(), startSeq, lastSeq, rps)
 					if err != nil {
 						return err
 					}
 
 					e.rss = append(e.rss, rs)
-					e.l.Debugf("monitor info : Height:%d  EventCnt:%d LastSeq:%d ",
-						v.Height.Int64(), len(rps[len(rps)-1].Events), e.seq)
+					e.l.Debugf("monitor info : Height:%d  RpsCnt:%d LastSeq:%d ",
+						v.Height.Int64(), len(rps), e.seq)
 
 					e.rsc <- rs
 				}
@@ -329,7 +347,7 @@ func (e *ethbr) newBlockUpdate(v *client.BlockNotification) (*client.BlockUpdate
 
 func (e *ethbr) GetReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range e.rss {
-		if rs.Seq() <= seq && seq <= rs.Seq() {
+		if rs.startSeq <= seq && seq <= rs.lastSeq {
 			return rs
 		}
 	}
