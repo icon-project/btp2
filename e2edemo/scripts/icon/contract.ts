@@ -183,15 +183,19 @@ export class Contract {
 
   async waitEvent(
       sig: string,
+      fromBlock?: number,
   ) {
     let latest = await this.getBlock("latest");
-    let height = latest.height -1;
+    let height = latest.height - 1;
+    if (fromBlock && fromBlock < height) {
+      height = fromBlock;
+    }
     let block = await this.getBlock(height);
     while (true) {
-      while (height < latest.height){
+      while (height < latest.height) {
         const events = await this.filterEventFromBlock(block, sig, this.address);
         if (events.length > 0) {
-          return events;
+          return { block, events };
         }
         height++;
         if (height == latest.height) {

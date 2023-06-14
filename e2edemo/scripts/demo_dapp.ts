@@ -15,9 +15,14 @@ function sleep(millis: number) {
 
 async function waitEvent<TEvent extends TypedEvent>(
     ctr : BaseContract,
-    filter: TypedEventFilter<TEvent>) : Promise<Array<TEvent>> {
+    filter: TypedEventFilter<TEvent>,
+    fromBlock?: number
+): Promise<Array<TEvent>> {
   let height = await ctr.provider.getBlockNumber();
   let next = height + 1;
+  if (fromBlock && fromBlock < height) {
+    height = fromBlock;
+  }
   while (true) {
     for (;height < next;height++){
       const events = await ctr.queryFilter(filter, height);
@@ -177,13 +182,13 @@ async function checkCallMessage(dst: string, srcChain: any, dstChain: any, sn: B
   } else if (isIconChain(dstChain)) {
     const iconNetwork = IconNetwork.getNetwork(dst);
     const xcallDst = new XCall(iconNetwork, dstChain.contracts.xcall);
-    const logs = await xcallDst.waitEvent("CallMessage(str,str,int,int)");
-    if (logs.length == 0) {
+    const {block, events} = await xcallDst.waitEvent("CallMessage(str,str,int,int)");
+    if (events.length == 0) {
       throw new Error(`DApp: could not find event: "CallMessage"`);
     }
-    console.log(logs[0]);
-    const indexed = logs[0].indexed || [];
-    const data = logs[0].data || [];
+    console.log(events[0]);
+    const indexed = events[0].indexed || [];
+    const data = events[0].data || [];
     const event = {
       _from: indexed[1],
       _to: indexed[2],
@@ -294,30 +299,32 @@ async function checkCallExecuted(dst: string, dstChain: any, receipt: any, reqId
 }
 
 async function checkResponseMessage(src: string, srcChain: any, sn: BigNumber, expectRevert: boolean) {
-  let event;
+  let event, blockNum;
   if (isIconChain(srcChain)) {
     const iconNetwork = IconNetwork.getNetwork(src);
     const xcallSrc = new XCall(iconNetwork, srcChain.contracts.xcall);
-    const logs = await xcallSrc.waitEvent("ResponseMessage(int,int,str)");
-    if (logs.length == 0) {
+    const {block, events} = await xcallSrc.waitEvent("ResponseMessage(int,int,str)");
+    if (events.length == 0) {
       throw new Error(`DApp: could not find event: "ResponseMessage"`);
     }
-    console.log(logs);
-    const indexed = logs[0].indexed || [];
-    const data = logs[0].data || [];
+    console.log(events);
+    const indexed = events[0].indexed || [];
+    const data = events[0].data || [];
     event = {
       _sn: BigNumber.from(indexed[1]),
       _code: BigNumber.from(data[0]),
       _msg: data[1]
     }
+    blockNum = block.height;
   } else if (isEVMChain(srcChain)) {
     const xcallSrc = await ethers.getContractAt('CallService', srcChain.contracts.xcall);
-    const logs = await waitEvent(xcallSrc, xcallSrc.filters.ResponseMessage());
-    if (logs.length == 0) {
+    const events = await waitEvent(xcallSrc, xcallSrc.filters.ResponseMessage());
+    if (events.length == 0) {
       throw new Error(`DApp: could not find event: "ResponseMessage"`);
     }
-    console.log(logs)
-    event = logs[0].args;
+    console.log(events)
+    event = events[0].args;
+    blockNum = (await events[0].getBlock()).number;
   } else {
     throw new Error(`DApp: unknown source chain: ${srcChain}`);
   }
@@ -327,12 +334,13 @@ async function checkResponseMessage(src: string, srcChain: any, sn: BigNumber, e
   if ((expectRevert && event._code.isZero()) || (!expectRevert && !event._code.isZero())) {
     throw new Error(`DApp: not the expected response message`);
   }
+  return blockNum;
 }
 
-async function checkRollbackMessage(src: string, srcChain: any) {
+async function checkRollbackMessage(src: string, srcChain: any, blockNum: number) {
   if (isEVMChain(srcChain)) {
     const xcallSrc = await ethers.getContractAt('CallService', srcChain.contracts.xcall);
-    const logs = await waitEvent(xcallSrc, xcallSrc.filters.RollbackMessage());
+    const logs = await waitEvent(xcallSrc, xcallSrc.filters.RollbackMessage(), blockNum);
     if (logs.length == 0) {
       throw new Error(`DApp: could not find event: "RollbackMessage"`);
     }
@@ -341,12 +349,12 @@ async function checkRollbackMessage(src: string, srcChain: any) {
   } else if (isIconChain(srcChain)) {
     const iconNetwork = IconNetwork.getNetwork(src);
     const xcallSrc = new XCall(iconNetwork, srcChain.contracts.xcall);
-    const logs = await xcallSrc.waitEvent("RollbackMessage(int)");
-    if (logs.length == 0) {
+    const {block, events} = await xcallSrc.waitEvent("RollbackMessage(int)", blockNum);
+    if (events.length == 0) {
       throw new Error(`DApp: could not find event: "RollbackMessage"`);
     }
-    console.log(logs[0]);
-    const indexed = logs[0].indexed || [];
+    console.log(events[0]);
+    const indexed = events[0].indexed || [];
     return BigNumber.from(indexed[1]);
   } else {
     throw new Error(`DApp: unknown source chain: ${srcChain}`);
@@ -482,11 +490,11 @@ async function sendCallMessage(src: string, dst: string, msgData?: string, needR
 
   if (needRollback) {
     console.log(`[${step++}] check ResponseMessage event on ${src} chain`);
-    await checkResponseMessage(src, srcChain, sn, expectRevert);
+    const responseHeight = await checkResponseMessage(src, srcChain, sn, expectRevert);
 
     if (expectRevert) {
       console.log(`[${step++}] check RollbackMessage event on ${src} chain`);
-      const sn = await checkRollbackMessage(src, srcChain);
+      const sn = await checkRollbackMessage(src, srcChain, responseHeight);
 
       console.log(`[${step++}] invoke executeRollback with sn=${sn}`);
       const executeRollbackReceipt = await invokeExecuteRollback(src, srcChain, sn);
