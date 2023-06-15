@@ -123,40 +123,42 @@ func (e *ethbr) BuildBlockProof(bls *btpTypes.BMCLinkStatus, height int64) (link
 
 func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (link.MessageProof, error) {
 	var rmSize int
-	var seq int64
-
+	seq := bls.RxSeq + 1
 	rps := make([]*client.ReceiptProof, 0)
-	rs := e.GetReceiveStatusForSequence(bls.RxSeq + 1)
+	rs := e.GetReceiveStatusForSequence(seq)
 	if rs == nil {
 		return nil, nil
 	}
-	e.l.Debugf("OnBlockOfSrc rpsCnt:%d rxSeq:%d", len(rs.rps), rs.Seq())
 
-	rpsCnt := int64(len(rs.rps))
-	offset := bls.RxSeq - (rs.Seq() - rpsCnt)
-	if rpsCnt > 0 {
-		for i := offset; i < rpsCnt; i++ {
+	eventCnt := rs.lastSeq - (rs.startSeq - 1)
+	e.l.Debugf("OnBlockOfSrc eventCnt:%d rxSeq:%d", eventCnt, rs.Seq())
+	if eventCnt > 0 {
+		for _, rp := range rs.rps {
 			trp := &client.ReceiptProof{
-				Index:  rs.rps[i].Index,
+				Index:  rp.Index,
 				Events: make([]*client.Event, 0),
-				Height: rs.rps[i].Height,
+				Height: rp.Height,
 			}
-			rps = append(rps, trp)
+			for _, event := range rp.Events {
+				if event.Sequence.Int64() == seq {
+					rps = append(rps, trp)
+					size := sizeOfEvent(event)
 
-			for _, event := range rs.rps[i].Events {
-				size := sizeOfEvent(event)
+					if (int(limit) < rmSize+size) && rmSize > 0 {
+						return NewMessageProof(bls, bls.RxSeq+1, seq-1, rps)
+					}
 
-				if (int(limit) < rmSize+size) && rmSize > 0 {
-					return NewMessageProof(bls, bls.RxSeq, seq, rps)
+					trp.Events = append(trp.Events, event)
+					seq = event.Sequence.Int64()
+					rmSize += size
+
+					seq = seq + 1
 				}
-				trp.Events = append(trp.Events, event)
-				seq = event.Sequence.Int64()
-				rmSize += size
 			}
 
 			//last event
 			if int(limit) < rmSize {
-				return NewMessageProof(bls, bls.RxSeq, seq, rps)
+				return NewMessageProof(bls, bls.RxSeq+1, seq-1, rps)
 			}
 
 			//remove last receipt if empty
@@ -164,8 +166,7 @@ func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (lin
 				rps = rps[:len(rps)-1]
 			}
 		}
-
-		return NewMessageProof(bls, bls.RxSeq, seq, rps)
+		return NewMessageProof(bls, bls.RxSeq+1, seq-1, rps)
 	}
 	return nil, nil
 }
