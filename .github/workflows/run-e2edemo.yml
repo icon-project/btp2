@@ -39,15 +39,15 @@ jobs:
         working-directory: ./e2edemo
         run: npm install
 
+      - name: Build all contracts
+        working-directory: ./e2edemo
+        run: make build-all
+
       - name: Setup ICON node
         working-directory: ./e2edemo
         env:
           CI_WORKFLOW: true
         run: make setup-node
-
-      - name: Build all contracts
-        working-directory: ./e2edemo
-        run: make build-all
 
       - name: Deploy all contracts
         working-directory: ./e2edemo

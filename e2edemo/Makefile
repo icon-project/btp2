@@ -32,7 +32,7 @@ copy-src:
 
 compile: copy-src
 	@ echo ">>> Compile solidity codes" ; \
-	$(HARDHAT) compile
+	$(HARDHAT) compile || exit 1
 
 build-bmc-java:
 	@ echo ">>> Build BMC javascore" ; \
