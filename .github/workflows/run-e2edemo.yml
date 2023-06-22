@@ -37,7 +37,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./e2edemo
-        run: npm install
+        run: npm ci
 
       - name: Build all contracts
         working-directory: ./e2edemo
