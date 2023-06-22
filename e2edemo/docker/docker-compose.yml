@@ -1,10 +1,12 @@
 version: "3"
 services:
-  ganache:
-    image: trufflesuite/ganache:v7.5.0
+  hardhat:
+    build: ./hardhat
     ports:
       - 8545:8545
-    command: -b 3 -l 15000000 -p 8545 -m "test test test test test test test test test test test junk"
+    volumes:
+      - ./hardhat/logs:/app/logs
+    command: /bin/sh -c "/app/node_modules/.bin/hardhat --config hardhat.config.js node 2>&1 | tee /app/logs/hardhat.log"
   icon-node:
     image: iconloop/goloop-icon:v1.3.7
     container_name: "icon-node"
