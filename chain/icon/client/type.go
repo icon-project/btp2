@@ -95,30 +95,26 @@ type ReceiptData struct {
 	StepUsed           []byte
 	StepPrice          []byte
 	LogsBloom          []byte
-	EventLogs          []EventLog
+	EventLogs          []EventLogData
 	SCOREAddress       []byte
 	EventLogsHash      []byte
 }
 
-type EventLog struct {
+type EventLogData struct {
 	Addr    []byte
 	Indexed [][]byte
 	Data    [][]byte
 }
 
 type TransactionResult struct {
-	To                 Address `json:"to"`
-	CumulativeStepUsed HexInt  `json:"cumulativeStepUsed"`
-	StepUsed           HexInt  `json:"stepUsed"`
-	StepPrice          HexInt  `json:"stepPrice"`
-	EventLogs          []struct {
-		Addr    Address  `json:"scoreAddress"`
-		Indexed []string `json:"indexed"`
-		Data    []string `json:"data"`
-	} `json:"eventLogs"`
-	LogsBloom HexBytes `json:"logsBloom"`
-	Status    HexInt   `json:"status"`
-	Failure   *struct {
+	To                 Address    `json:"to"`
+	CumulativeStepUsed HexInt     `json:"cumulativeStepUsed"`
+	StepUsed           HexInt     `json:"stepUsed"`
+	StepPrice          HexInt     `json:"stepPrice"`
+	EventLogs          []EventLog `json:"eventLogs"`
+	LogsBloom          HexBytes   `json:"logsBloom"`
+	Status             HexInt     `json:"status"`
+	Failure            *struct {
 		CodeValue    HexInt `json:"code"`
 		MessageValue string `json:"message"`
 	} `json:"failure,omitempty"`
@@ -127,6 +123,12 @@ type TransactionResult struct {
 	BlockHeight  HexInt   `json:"blockHeight" validate:"required,t_int"`
 	TxIndex      HexInt   `json:"txIndex" validate:"required,t_int"`
 	TxHash       HexBytes `json:"txHash" validate:"required,t_int"`
+}
+
+type EventLog struct {
+	Addr    Address  `json:"scoreAddress"`
+	Indexed []string `json:"indexed"`
+	Data    []string `json:"data"`
 }
 
 type TransactionParam struct {
