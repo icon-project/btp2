@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"crypto/ecdsa"
-	"errors"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -19,8 +18,7 @@ func (w *EvmWallet) Address() string {
 }
 
 func (w *EvmWallet) Sign(data []byte) ([]byte, error) {
-	//TODO: Not implemented yet
-	return nil, errors.New("Not implemented yet")
+	return crypto.Sign(data, w.Skey)
 }
 
 func (w *EvmWallet) PublicKey() []byte {

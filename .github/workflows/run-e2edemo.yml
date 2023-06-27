@@ -31,23 +31,23 @@ jobs:
       - name: Setup node 18
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 18.15
           cache: 'npm'
           cache-dependency-path: e2edemo/package-lock.json
 
       - name: Install dependencies
         working-directory: ./e2edemo
-        run: npm install
+        run: npm ci
+
+      - name: Build all contracts
+        working-directory: ./e2edemo
+        run: make build-all
 
       - name: Setup ICON node
         working-directory: ./e2edemo
         env:
           CI_WORKFLOW: true
         run: make setup-node
-
-      - name: Build all contracts
-        working-directory: ./e2edemo
-        run: make build-all
 
       - name: Deploy all contracts
         working-directory: ./e2edemo

@@ -44,6 +44,10 @@ const (
 	DefaultGetTransactionResultPollingInterval = 1500 * time.Millisecond //1.5sec
 )
 
+var (
+	BlockRetryLimit = 5
+)
+
 type Wallet interface {
 	Sign(data []byte) ([]byte, error)
 	Address() string
@@ -210,26 +214,59 @@ func (c *Client) GetBTPLinkOffset(src types.BtpAddress, dst types.BtpAddress) (o
 
 func (c *Client) GetBTPHeader(p *BTPBlockParam) (string, error) {
 	var header string
-	if _, err := c.Do("btp_getHeader", p, &header); err != nil {
-		return "", err
+	var retry = BlockRetryLimit
+	for {
+		if _, err := c.Do("btp_getHeader", p, &header); err != nil {
+			if errors.NotFoundError.Equals(err) {
+				if retry == 0 {
+					c.l.Error("Polling failed, retries exceeded")
+					return "", fmt.Errorf("Polling failed, retries exceeded")
+				}
+				retry--
+				<-time.After(time.Second)
+			}
+			return "", err
+		}
+		return header, nil
 	}
-	return header, nil
 }
 
 func (c *Client) GetBTPMessage(p *BTPBlockParam) ([]string, error) {
 	var result []string
-	if _, err := c.Do("btp_getMessages", p, &result); err != nil {
-		return nil, err
+	var retry = BlockRetryLimit
+	for {
+		if _, err := c.Do("btp_getMessages", p, &result); err != nil {
+			if errors.NotFoundError.Equals(err) {
+				if retry == 0 {
+					c.l.Error("Polling failed, retries exceeded")
+					return nil, fmt.Errorf("Polling failed, retries exceeded")
+				}
+				retry--
+				<-time.After(time.Second)
+			}
+			return nil, err
+		}
+		return result, nil
 	}
-	return result, nil
 }
 
 func (c *Client) GetBTPProof(p *BTPBlockParam) (string, error) {
 	var result string
-	if _, err := c.Do("btp_getProof", p, &result); err != nil {
-		return "", err
+	var retry = BlockRetryLimit
+	for {
+		if _, err := c.Do("btp_getProof", p, &result); err != nil {
+			if errors.NotFoundError.Equals(err) {
+				if retry == 0 {
+					c.l.Error("Polling failed, retries exceeded")
+					return "", fmt.Errorf("Polling failed, retries exceeded")
+				}
+				retry--
+				<-time.After(time.Second)
+			}
+			return "", err
+		}
+		return result, nil
 	}
-	return result, nil
 }
 
 func (c *Client) GetBTPNetworkInfo(p *BTPNetworkInfoParam) (*BTPNetworkInfo, error) {

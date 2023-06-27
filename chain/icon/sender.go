@@ -194,7 +194,7 @@ func (s *sender) result(id int, txh *client.TransactionHashParam) {
 	s.queue.dequeue(id)
 
 	if err != nil {
-		s.l.Debugf("result fail rm id : %d ", id)
+		s.l.Debugf("result fail rm id : %d , txHash : %v", id, txh.Hash)
 
 		if ec, ok := errors.CoderOf(err); ok {
 			s.rr <- &types.RelayResult{
@@ -204,7 +204,7 @@ func (s *sender) result(id int, txh *client.TransactionHashParam) {
 			}
 		}
 	} else {
-		s.l.Debugf("result success rm id : %d ", id)
+		s.l.Debugf("result success rm id : %d , txHash : %v", id, txh.Hash)
 		s.rr <- &types.RelayResult{
 			Id:        id,
 			Err:       -1,
