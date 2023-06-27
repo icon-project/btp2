@@ -3,6 +3,7 @@ package btp2
 import (
 	"encoding/base64"
 	"fmt"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -10,10 +11,15 @@ import (
 	"github.com/icon-project/btp2/common/codec"
 	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/intconv"
+	"github.com/icon-project/btp2/common/jsonrpc"
 	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/mbt"
 	"github.com/icon-project/btp2/common/types"
+)
+
+const (
+	DefaultGetBtpMessageInterval = time.Second
 )
 
 type receiveStatus struct {
@@ -43,7 +49,7 @@ type btp2 struct {
 	dst         types.BtpAddress
 	c           *client.Client
 	nid         int64
-	rsc         chan link.ReceiveStatus
+	rsc         chan interface{}
 	rss         []*receiveStatus
 	rs          *receiveStatus
 	seq         int64
@@ -55,7 +61,7 @@ func NewBTP2(src, dst types.BtpAddress, endpoint string, l log.Logger) *btp2 {
 		src: src,
 		dst: dst,
 		l:   l,
-		rsc: make(chan link.ReceiveStatus),
+		rsc: make(chan interface{}),
 		rss: make([]*receiveStatus, 0),
 		rs:  &receiveStatus{},
 	}
@@ -75,13 +81,22 @@ func (b *btp2) getNetworkId() error {
 	return nil
 }
 func (b *btp2) getBtpMessage(height int64) ([]string, error) {
-	pr := &client.BTPBlockParam{Height: client.HexInt(intconv.FormatInt(height)), NetworkId: client.HexInt(intconv.FormatInt(b.nid))}
-	mgs, err := b.c.GetBTPMessage(pr)
-	if err != nil {
-		return nil, err
+	for {
+		pr := &client.BTPBlockParam{Height: client.HexInt(intconv.FormatInt(height)), NetworkId: client.HexInt(intconv.FormatInt(b.nid))}
+		mgs, err := b.c.GetBTPMessage(pr)
+		if err != nil {
+			if je, ok := err.(*jsonrpc.Error); ok {
+				switch je.Code {
+				case client.JsonrpcErrorCodeNotFound:
+					<-time.After(DefaultGetBtpMessageInterval)
+					continue
+				default:
+					return nil, err
+				}
+			}
+		}
+		return mgs, nil
 	}
-
-	return mgs, nil
 }
 
 func (b *btp2) getBtpHeader(height int64) ([]byte, []byte, error) {
@@ -108,7 +123,7 @@ func (b *btp2) getBtpHeader(height int64) ([]byte, []byte, error) {
 	return h, p, nil
 }
 
-func (b *btp2) Start(bls *types.BMCLinkStatus) (<-chan link.ReceiveStatus, error) {
+func (b *btp2) Start(bls *types.BMCLinkStatus) (<-chan interface{}, error) {
 	if err := b.getNetworkId(); err != nil {
 		return nil, err
 	}
@@ -119,7 +134,8 @@ func (b *btp2) Start(bls *types.BMCLinkStatus) (<-chan link.ReceiveStatus, error
 
 	go func() {
 		err := b.Monitoring(bls)
-		b.l.Panicf("Unknown monitoring error occurred  (err : %v)", err)
+		b.l.Debugf("Unknown monitoring error occurred  (err : %v)", err)
+		b.rsc <- err
 	}()
 
 	return b.rsc, nil

@@ -1,7 +1,6 @@
 package link
 
 import (
-	"fmt"
 	"math/rand"
 	"sync"
 
@@ -61,37 +60,16 @@ type Link struct {
 	s          types.Sender
 	l          log.Logger
 	mtx        sync.RWMutex
-	src        types.BtpAddress
-	dst        types.BtpAddress
 	rmsMtx     sync.RWMutex
 	rms        []*relayMessage
 	rss        []ReceiveStatus
 	rmi        *relayMessageItem
 	limitSize  int64
-	cfg        *chain.Config //TODO config refactoring
+	srcCfg     chain.BaseConfig
+	dstCfg     chain.BaseConfig
 	bls        *types.BMCLinkStatus
 	blsChannel chan *types.BMCLinkStatus
 	relayState RelayState
-}
-
-func NewLink(cfg *chain.Config, r Receiver, l log.Logger) types.Link {
-	link := &Link{
-		src: cfg.Src.Address,
-		dst: cfg.Dst.Address,
-		l:   l.WithFields(log.Fields{log.FieldKeyChain: fmt.Sprintf("%s", cfg.Dst.Address.NetworkID())}),
-		cfg: cfg,
-		r:   r,
-		rms: make([]*relayMessage, 0),
-		rss: make([]ReceiveStatus, 0),
-		rmi: &relayMessageItem{
-			rmis: make([][]RelayMessageItem, 0),
-			size: 0,
-		},
-		blsChannel: make(chan *types.BMCLinkStatus),
-		relayState: RUNNING,
-	}
-	link.rmi.rmis = append(link.rmi.rmis, make([]RelayMessageItem, 0))
-	return link
 }
 
 func (l *Link) Start(sender types.Sender) error {
@@ -132,16 +110,17 @@ func (l *Link) Stop() {
 
 func (l *Link) receiverChannel(errCh chan error) error {
 	once := new(sync.Once)
-	rsc, err := l.r.Start(l.bls)
+	rc, err := l.r.Start(l.bls)
 	if err != nil {
 		return err
 	}
 	go func() {
 		for {
 			select {
-			case rs := <-rsc:
-				switch t := rs.(type) {
+			case rsc := <-rc:
+				switch t := rsc.(type) {
 				case ReceiveStatus:
+					rs := t.(ReceiveStatus)
 					l.rss = append(l.rss, t)
 					once.Do(func() {
 						if err = l.handleUndeliveredRelayMessage(); err != nil {
@@ -220,7 +199,7 @@ func (l *Link) buildRelayMessage() error {
 			}
 
 			if mpLen == 0 {
-				if l.cfg.Src.FilledBlockUpdate == true {
+				if l.srcCfg.FilledBlockUpdate == true {
 					if l.isOverLimit(l.rmi.size) {
 						if err = l.appendRelayMessage(); err != nil {
 							return err
@@ -521,7 +500,7 @@ func (l *Link) result(rr *types.RelayResult) error {
 	if rm != nil {
 		switch rr.Err {
 		case errors.SUCCESS:
-			if l.cfg.Dst.LatestResult == true {
+			if l.dstCfg.LatestResult == true {
 				l.successRelayMessage(rr.Id)
 			} else {
 				if rr.Finalized == true {

@@ -103,7 +103,7 @@ type sender struct {
 	queue              *Queue
 }
 
-func NewSender(src, dst btpTypes.BtpAddress, w client.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
+func newSender(src, dst btpTypes.BtpAddress, w client.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
 	s := &sender{
 		src:   src,
 		dst:   dst,

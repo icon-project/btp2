@@ -287,7 +287,7 @@ type WSResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
-//T_BIN_DATA, T_HASH
+// T_BIN_DATA, T_HASH
 type HexBytes string
 
 func (hs HexBytes) Value() ([]byte, error) {
@@ -300,7 +300,7 @@ func NewHexBytes(b []byte) HexBytes {
 	return HexBytes("0x" + hex.EncodeToString(b))
 }
 
-//T_INT
+// T_INT
 type HexInt string
 
 func (i HexInt) Value() (int64, error) {
@@ -322,7 +322,7 @@ func NewHexInt(v int64) HexInt {
 	return HexInt(intconv.FormatInt(v))
 }
 
-//T_ADDR_EOA, T_ADDR_SCORE
+// T_ADDR_EOA, T_ADDR_SCORE
 type Address string
 
 func (a Address) Value() ([]byte, error) {
@@ -396,7 +396,7 @@ type Event struct {
 	Message  []byte
 }
 
-//T_SIG
+// T_SIG
 type Signature string
 
 type Block struct {
@@ -465,4 +465,15 @@ type BTPBlockHeader struct {
 	MessageCount           int64
 	MessagesRoot           []byte
 	NextProofContext       []byte
+}
+type Dir int
+
+const (
+	DirLeft = Dir(iota)
+	DirRight
+)
+
+type MerkleNode struct {
+	Dir   Dir
+	Value []byte
 }

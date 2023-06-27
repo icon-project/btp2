@@ -17,104 +17,22 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	stdlog "log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/icon-project/btp2/chain"
-
 	"github.com/icon-project/btp2/common/cli"
-	"github.com/icon-project/btp2/common/crypto"
-	"github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
-	"github.com/icon-project/btp2/common/wallet"
 )
 
 var (
 	version = "unknown"
 	build   = "unknown"
 )
-
-const (
-	DefaultKeyStorePass = "relay"
-	BothDirection       = "both"
-	FrontDirection      = "front"
-	ReverseDirection    = "reverse"
-	ICON                = "icon"
-	ETH                 = "eth"
-	ETH2                = "eth2"
-	BSC                 = "bsc"
-	HARDHAT             = "hardhat"
-)
-
-type Config struct {
-	chain.Config `json:",squash"`     //instead of `mapstructure:",squash"`
-	LogLevel     string               `json:"log_level"`
-	ConsoleLevel string               `json:"console_level"`
-	LogForwarder *log.ForwarderConfig `json:"log_forwarder,omitempty"`
-	LogWriter    *log.WriterConfig    `json:"log_writer,omitempty"`
-}
-
-func (c *Config) Wallet(passwd, secret string, keyStore json.RawMessage) (wallet.Wallet, error) {
-	pw, err := c.resolvePassword(secret, passwd)
-	if err != nil {
-		return nil, err
-	}
-	return wallet.DecryptKeyStore(keyStore, pw)
-}
-
-func (c *Config) resolvePassword(keySecret, keyStorePass string) ([]byte, error) {
-	if keySecret != "" {
-		return ioutil.ReadFile(keySecret)
-	} else {
-		if keyStorePass == "" {
-			return []byte(DefaultKeyStorePass), nil
-		} else {
-			return []byte(keyStorePass), nil
-		}
-	}
-}
-
-func (c *Config) EnsureWallet() error {
-	srcPw, err := c.resolvePassword(c.Src.KeySecret, c.Src.KeyStorePass)
-	dstPw, err := c.resolvePassword(c.Dst.KeySecret, c.Dst.KeyStorePass)
-	if err != nil {
-		return err
-	}
-	if len(c.Src.KeyStoreData) < 1 {
-		src_prikey, _ := crypto.GenerateKeyPair()
-		if ks, err := wallet.EncryptKeyAsKeyStore(src_prikey, srcPw); err != nil {
-			return err
-		} else {
-			c.Src.KeyStoreData = ks
-		}
-	} else {
-		if _, err := wallet.DecryptKeyStore(c.Src.KeyStoreData, srcPw); err != nil {
-			return errors.Errorf("fail to decrypt KeyStore err=%+v", err)
-		}
-	}
-
-	if len(c.Dst.KeyStoreData) < 1 {
-		dst_prikey, _ := crypto.GenerateKeyPair()
-		if ks, err := wallet.EncryptKeyAsKeyStore(dst_prikey, dstPw); err != nil {
-			return err
-		} else {
-			c.Dst.KeyStoreData = ks
-		}
-	} else {
-		if _, err := wallet.DecryptKeyStore(c.Dst.KeyStoreData, dstPw); err != nil {
-			return errors.Errorf("fail to decrypt KeyStore err=%+v", err)
-		}
-	}
-
-	return nil
-}
 
 var logoLines = []string{
 	"  _____      _             ",
@@ -129,7 +47,7 @@ var logoLines = []string{
 
 func main() {
 	rootCmd, rootVc := cli.NewCommand(nil, nil, "relay", "BTP Relay CLI")
-	cfg := &Config{}
+	cfg := &link.Config{}
 	rootCmd.Long = "Command Line Interface of Relay for Blockchain Transmission Protocol"
 	cli.SetEnvKeyReplacer(rootVc, strings.NewReplacer(".", "_"))
 	//rootVc.Debug()
@@ -223,15 +141,6 @@ func main() {
 		Use:   "save [file]",
 		Short: "Save configuration",
 		Args:  cli.ArgsWithDefaultErrorFunc(cobra.ExactArgs(1)),
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := cfg.EnsureWallet(); err != nil {
-				return fmt.Errorf("fail to ensure src wallet err:%+v", err)
-			} else {
-				cfg.Src.KeyStorePass = ""
-				cfg.Dst.KeyStorePass = ""
-			}
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			saveFilePath := args[0]
 			cfg.FilePath, _ = filepath.Abs(saveFilePath)
@@ -275,31 +184,19 @@ func main() {
 			log.Printf("Version : %s", version)
 			log.Printf("Build   : %s", build)
 
-			var (
-				err       error
-				srcWallet wallet.Wallet
-				dstWallet wallet.Wallet
-			)
-			if srcWallet, err = cfg.Wallet(cfg.Src.KeyStorePass, cfg.Src.KeySecret, cfg.Src.KeyStoreData); err != nil {
-				return err
-			}
-
-			if dstWallet, err = cfg.Wallet(cfg.Dst.KeyStorePass, cfg.Dst.KeySecret, cfg.Dst.KeyStoreData); err != nil {
-				return err
-			}
-
-			var srcKsData wallet.KeyStoreData
-			var dstKsData wallet.KeyStoreData
-			if err := json.Unmarshal(cfg.Src.KeyStoreData, &srcKsData); err != nil {
-				return err
-			}
-
-			if err := json.Unmarshal(cfg.Dst.KeyStoreData, &dstKsData); err != nil {
-				return err
-			}
 			modLevels, _ := cmd.Flags().GetStringToString("mod_level")
 
-			return NewLink(cfg, srcWallet, dstWallet, modLevels)
+			ls, err := link.NewLinkFactory(cfg, modLevels)
+			if err != nil {
+				return err
+			}
+
+			s, err := link.NewSender(cfg.Src, cfg.Dst, ls[0].GetLogger())
+			if err != nil {
+				return err
+			}
+
+			return ls[0].Start(s)
 		},
 	}
 	rootCmd.AddCommand(startCmd)
@@ -319,58 +216,4 @@ func main() {
 		fmt.Printf("%+v", err)
 		os.Exit(1)
 	}
-}
-
-func setLogger(cfg *Config, w wallet.Wallet, modLevels map[string]string) log.Logger {
-	l := log.WithFields(log.Fields{log.FieldKeyWallet: w.Address()[2:]})
-	log.SetGlobalLogger(l)
-	stdlog.SetOutput(l.WriterLevel(log.WarnLevel))
-	if cfg.LogWriter != nil {
-		if cfg.LogWriter.Filename == "" {
-			log.Debugln("LogWriterConfig filename is empty string, will be ignore")
-		} else {
-			var lwCfg log.WriterConfig
-			lwCfg = *cfg.LogWriter
-			lwCfg.Filename = cfg.ResolveAbsolute(lwCfg.Filename)
-			w, err := log.NewWriter(&lwCfg)
-			if err != nil {
-				log.Panicf("Fail to make writer err=%+v", err)
-			}
-			err = l.SetFileWriter(w)
-			if err != nil {
-				log.Panicf("Fail to set file l err=%+v", err)
-			}
-		}
-	}
-
-	if lv, err := log.ParseLevel(cfg.LogLevel); err != nil {
-		log.Panicf("Invalid log_level=%s", cfg.LogLevel)
-	} else {
-		l.SetLevel(lv)
-	}
-	if lv, err := log.ParseLevel(cfg.ConsoleLevel); err != nil {
-		log.Panicf("Invalid console_level=%s", cfg.ConsoleLevel)
-	} else {
-		l.SetConsoleLevel(lv)
-	}
-
-	for mod, lvStr := range modLevels {
-		if lv, err := log.ParseLevel(lvStr); err != nil {
-			log.Panicf("Invalid mod_level mod=%s level=%s", mod, lvStr)
-		} else {
-			l.SetModuleLevel(mod, lv)
-		}
-	}
-
-	if cfg.LogForwarder != nil {
-		if cfg.LogForwarder.Vendor == "" && cfg.LogForwarder.Address == "" {
-			log.Debugln("LogForwarderConfig vendor and address is empty string, will be ignore")
-		} else {
-			if err := log.AddForwarder(cfg.LogForwarder); err != nil {
-				log.Fatalf("Invalid log_forwarder err:%+v", err)
-			}
-		}
-	}
-
-	return l
 }

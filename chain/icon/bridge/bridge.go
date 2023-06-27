@@ -40,7 +40,7 @@ type bridge struct {
 	dst         types.BtpAddress
 	c           *client.Client
 	nid         int64
-	rsc         chan link.ReceiveStatus
+	rsc         chan interface{}
 	rss         []*receiveStatus
 	rs          *receiveStatus
 	startHeight int64
@@ -78,7 +78,7 @@ func NewBridge(src, dst types.BtpAddress, endpoint string, l log.Logger) *bridge
 		src: src,
 		dst: dst,
 		l:   l,
-		rsc: make(chan link.ReceiveStatus),
+		rsc: make(chan interface{}),
 		rss: make([]*receiveStatus, 0),
 		rs:  &receiveStatus{},
 	}
@@ -98,7 +98,7 @@ func (b *bridge) getNetworkId() error {
 	return nil
 }
 
-func (b *bridge) Start(bs *types.BMCLinkStatus) (<-chan link.ReceiveStatus, error) {
+func (b *bridge) Start(bls *types.BMCLinkStatus) (<-chan interface{}, error) {
 	if err := b.getNetworkId(); err != nil {
 		return nil, err
 	}
@@ -108,7 +108,9 @@ func (b *bridge) Start(bs *types.BMCLinkStatus) (<-chan link.ReceiveStatus, erro
 	}
 
 	go func() {
-		b.Monitoring(bs) //TODO error handling
+		err := b.Monitoring(bls)
+		b.l.Debugf("Unknown monitoring error occurred  (err : %v)", err)
+		b.rsc <- err
 	}()
 
 	return b.rsc, nil
@@ -208,13 +210,13 @@ func (b *bridge) getBtpMessage(height int64) ([]string, error) {
 	return mgs, nil
 }
 
-func (b *bridge) Monitoring(bs *types.BMCLinkStatus) error {
-	if bs.Verifier.Height < 1 {
+func (b *bridge) Monitoring(bls *types.BMCLinkStatus) error {
+	if bls.Verifier.Height < 1 {
 		return fmt.Errorf("cannot catchup from zero height")
 	}
 
 	req := &client.BTPRequest{
-		Height:    client.NewHexInt(bs.Verifier.Height),
+		Height:    client.NewHexInt(bls.Verifier.Height),
 		NetworkID: client.NewHexInt(b.nid),
 		ProofFlag: client.NewHexInt(0),
 	}
@@ -231,10 +233,10 @@ func (b *bridge) Monitoring(bs *types.BMCLinkStatus) error {
 	}
 	onConn := func(conn *websocket.Conn) {
 		b.l.Debugf("ReceiveLoop monitorBTP2Block height:%d seq:%d networkId:%d connected %s",
-			bs.Verifier.Height, bs.TxSeq, b.nid, conn.LocalAddr().String())
+			bls.Verifier.Height, bls.TxSeq, b.nid, conn.LocalAddr().String())
 	}
 
-	err := b.monitorBTP2Block(req, bs, onConn, onErr)
+	err := b.monitorBTP2Block(req, bls, onConn, onErr)
 	if err != nil {
 		return err
 	}

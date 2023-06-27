@@ -3,6 +3,7 @@ package ethbr
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
@@ -60,28 +61,40 @@ type ethbr struct {
 	dst         btpTypes.BtpAddress
 	c           *client.Client
 	nid         int64
-	rsc         chan link.ReceiveStatus
+	rsc         chan interface{}
 	rss         []*receiveStatus
 	seq         int64
 	startHeight int64
+	opt         struct {
+		StartHeight int64
+	}
 }
 
-func NewEthBridge(src, dst btpTypes.BtpAddress, endpoint string, l log.Logger) *ethbr {
+func newEthBridge(src, dst btpTypes.BtpAddress, endpoint string, l log.Logger, opt map[string]interface{}) *ethbr {
 	c := &ethbr{
 		src: src,
 		dst: dst,
 		l:   l,
-		rsc: make(chan link.ReceiveStatus),
+		rsc: make(chan interface{}),
 		rss: make([]*receiveStatus, 0),
 	}
 	c.c = client.NewClient(endpoint, l)
+	b, err := json.Marshal(opt)
+	if err != nil {
+		l.Panicf("fail to marshal opt:%#v err:%+v", opt, err)
+	}
+
+	if err = json.Unmarshal(b, &c.opt); err != nil {
+		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
+	}
 	return c
 }
 
-func (e *ethbr) Start(bs *btpTypes.BMCLinkStatus) (<-chan link.ReceiveStatus, error) {
+func (e *ethbr) Start(bls *btpTypes.BMCLinkStatus) (<-chan interface{}, error) {
 	go func() {
-		err := e.Monitoring(bs)
-		e.l.Panicf("Unknown monitoring error occurred  (err : %v)", err)
+		err := e.Monitoring(bls)
+		e.l.Debugf("Unknown monitoring error occurred  (err : %v)", err)
+		e.rsc <- err
 	}()
 
 	return e.rsc, nil
@@ -215,23 +228,30 @@ func (e *ethbr) clearReceiveStatus(bls *btpTypes.BMCLinkStatus) {
 	}
 }
 
-func (e *ethbr) Monitoring(bs *btpTypes.BMCLinkStatus) error {
-	//var err error
+func (e *ethbr) Monitoring(bls *btpTypes.BMCLinkStatus) error {
+	var height int64
 	fq := &ethereum.FilterQuery{
 		Addresses: []common.Address{common.HexToAddress(e.src.ContractAddress())},
 		Topics: [][]common.Hash{
 			{crypto.Keccak256Hash([]byte(EventSignature))},
 		},
 	}
+
+	if e.opt.StartHeight > bls.Verifier.Height {
+		height = e.opt.StartHeight
+	} else {
+		height = bls.Verifier.Height
+	}
+
 	e.l.Debugf("ReceiveLoop height:%d seq:%d filterQuery[Address:%s,Topic:%s]",
-		bs.Verifier.Height, bs.RxSeq, fq.Addresses[0].String(), fq.Topics[0][0].Hex())
+		height, bls.RxSeq, fq.Addresses[0].String(), fq.Topics[0][0].Hex())
 	br := &client.BlockRequest{
-		Height:      big.NewInt(bs.Verifier.Height),
+		Height:      big.NewInt(height),
 		FilterQuery: fq,
 	}
 
-	if bs.RxSeq != 0 {
-		e.seq = bs.RxSeq
+	if bls.RxSeq != 0 {
+		e.seq = bls.RxSeq
 	}
 
 	return e.c.MonitorBlock(br,

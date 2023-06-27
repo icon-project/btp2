@@ -52,12 +52,12 @@ type BlockProof interface {
 
 type MessageProof interface {
 	RelayMessageItem
-	StartSeqNum() int64
-	LastSeqNum() int64
+	StartSeqNum() int64 //TODO change
+	LastSeqNum() int64  //TODO change
 }
 
 type Receiver interface {
-	Start(bls *types.BMCLinkStatus) (<-chan ReceiveStatus, error)
+	Start(bls *types.BMCLinkStatus) (<-chan interface{}, error)
 	Stop()
 	GetStatus() (ReceiveStatus, error)
 	BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]BlockUpdate, error)
