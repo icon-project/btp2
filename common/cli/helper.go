@@ -50,6 +50,10 @@ const (
 	FlagAnnotationCustom = "custom"
 )
 
+var (
+	DefaultEnvKeyReplacer = strings.NewReplacer(" ", "_", ".", "_", "-", "_")
+)
+
 func NewCommand(parentCmd *cobra.Command, parentVc *viper.Viper, use, short string) (*cobra.Command, *viper.Viper) {
 	c := &cobra.Command{Use: use, Short: short}
 	c.SetFlagErrorFunc(DefaultFlagErrorFunc)
@@ -58,8 +62,8 @@ func NewCommand(parentCmd *cobra.Command, parentVc *viper.Viper, use, short stri
 	}
 
 	var pFlags *pflag.FlagSet
-	envPrefix := strings.ReplaceAll(c.CommandPath(), " ", "_")
-	var envReplacer *strings.Replacer
+	envPrefix := c.CommandPath()
+	envReplacer := DefaultEnvKeyReplacer
 	if parentVc != nil {
 		if v := parentVc.Get("env_prefix"); v != nil {
 			envPrefix = v.(string)
@@ -69,6 +73,7 @@ func NewCommand(parentCmd *cobra.Command, parentVc *viper.Viper, use, short stri
 		}
 		envReplacer = GetEnvKeyReplacer(parentVc)
 	}
+	envPrefix = envReplacer.Replace(envPrefix)
 	vc := NewViper(envPrefix)
 	if pFlags != nil {
 		BindPFlags(vc, pFlags)
