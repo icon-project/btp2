@@ -280,6 +280,7 @@ func (l *Link) appendRelayMessage() error {
 		rm.bls.TxSeq = l.bls.TxSeq
 		rm.bls.RxSeq = l.bls.RxSeq
 		rm.bls.Verifier.Height = l.bls.Verifier.Height
+		rm.bls.Verifier.Extra = make([]byte, len(l.bls.Verifier.Extra))
 		copy(rm.bls.Verifier.Extra, l.bls.Verifier.Extra)
 
 		rm.sendingStatus = false
