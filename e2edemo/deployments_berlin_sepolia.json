@@ -1,0 +1,30 @@
+{
+  "berlin": {
+    "network": "0x7.icon",
+    "contracts": {
+      "bmc": "cxf1b0808f09138fffdb890772315aeabb37072a8a",
+      "xcall": "cxf4958b242a264fc11d7d8d95f79035e35b21c1bb",
+      "dapp": "cx92283a47a95164bd3d604da08128886125593545",
+      "bmv": "cx506970c5a98fce3a8b29a5a8436ed691e1fdbcda"
+    },
+    "networkTypeId": "0x1",
+    "networkId": "0x5",
+    "blockNum": 10087247
+  },
+  "sepolia": {
+    "network": "0xaa36a7.eth2",
+    "contracts": {
+      "bmcm": "0xee89840B024C570313D3540029A242c1b4E0E0A5",
+      "bmcs": "0xf04859b44Accae55D92510C4CC77F1dB41503DF5",
+      "bmc": "0xb31057dA7d24216E16e270e15CdbE537F472caEF",
+      "bmv": "0x73cCDBF447c8BbED10457A65F04DC4547d3071C1",
+      "xcall": "0x232dd167F4141d4313C29b5ea264aa98f9c339d4",
+      "dapp": "0x52D0A13ABD0B949FF840de7F953545BBB9259A9c"
+    },
+    "blockNum": 3774860
+  },
+  "link": {
+    "src": "berlin",
+    "dst": "sepolia"
+  }
+}

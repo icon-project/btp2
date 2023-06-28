@@ -4,23 +4,73 @@
       "network": "0x3.icon",
       "endpoint": "http://localhost:9080/api/v3/icon_dex",
       "keystore": "./docker/icon/config/keystore.json",
-      "keysecret": "./docker/icon/config/keysecret"
+      "keypass": "gochain",
+      "dApp" : {
+        "keystore": "./docker/icon/config/keystore.json",
+        "keypass": "gochain"
+      }
     },
     "icon1": {
       "network": "0x101.icon",
       "endpoint": "http://localhost:9180/api/v3/icon_dex",
       "keystore": "./docker/icon/config/keystore.json",
-      "keysecret": "./docker/icon/config/keysecret"
+      "keypass": "gochain",
+      "dApp" : {
+        "keystore": "./docker/icon/config/keystore.json",
+        "keypass": "gochain"
+      }
+    },
+    "iconTestNet": {
+      "network": "0x42.icon",
+      "endpoint": "https://btp.net.solidwallet.io/api/v3/icon_dex",
+      "keystore": "./docker/icon_test/config/keystore.json",
+      "keypass": "qwer1234%",
+      "dApp" : {
+        "keystore": "./docker/icon_test/config/keystore.json",
+        "keypass": "qwer1234%"
+      }
+    },
+    "berlin": {
+      "network": "0x7.icon",
+      "endpoint": "https://berlin.net.solidwallet.io/api/v3/icon_dex",
+      "keystore": "./docker/icon_berlin/config/keystore.json",
+      "keypass": "qwer1234%",
+      "dApp" : {
+        "keystore": "./docker/icon_berlin/config/keystore.json",
+        "keypass": "qwer1234%"
+      }
+    },
+    "havahTestNet": {
+      "network": "0x111.icon",
+      "endpoint": "https://btp.vega.havah.io/api/v3/icon_dex",
+      "keystore": "./docker/icon_havah/relay_keystore/keystore.json",
+      "keypass": "qwer1234%",
+      "dApp" : {
+        "keystore": "./docker/icon_test/service_keystore/keystore.json",
+        "keypass": "qwer1234%"
+      }
     },
     "hardhat": {
       "network": "0x539.hardhat",
       "endpoint": "http://localhost:8545",
       "keystore": "./docker/hardhat/keystore0.json",
       "keypass": "hardhat"
+    },
+    "bsc": {
+      "network": "0x61.bsc",
+      "endpoint": "https://data-seed-prebsc-1-s1.binance.org:8545",
+      "keystore": "./docker/eth/keystore.json",
+      "keypass": "etherAccount"
+    },
+    "sepolia": {
+      "network": "0xaa36a7.eth2",
+      "endpoint": "https://rpc.sepolia.org",
+      "keystore": "./docker/eth/keystore.json",
+      "keypass": "etherAccount"
     }
   },
   "link": {
-    "src": "icon0",
-    "dst": "hardhat"
+    "src": "berlin",
+    "dst": "sepolia"
   }
 }

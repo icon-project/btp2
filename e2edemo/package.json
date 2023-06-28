@@ -10,5 +10,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@openzeppelin/hardhat-upgrades": "^1.28.0"
   }
 }

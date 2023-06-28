@@ -1,0 +1,30 @@
+{
+  "berlin": {
+    "network": "0x7.icon",
+    "contracts": {
+      "bmc": "cxf1b0808f09138fffdb890772315aeabb37072a8a",
+      "xcall": "cxf4958b242a264fc11d7d8d95f79035e35b21c1bb",
+      "dapp": "cx92283a47a95164bd3d604da08128886125593545",
+      "bmv": "cx6810e0a7d6c0bc53eef006c221dcd731c8903a95"
+    },
+    "networkTypeId": "0x1",
+    "networkId": "0x4",
+    "blockNum": 10057565
+  },
+  "bsc": {
+    "network": "0x61.bsc",
+    "contracts": {
+      "bmcm": "0x41CD95F16f9bbF2bEB5479C00CF249A8b0A076bF",
+      "bmcs": "0xCC98F0736ec2ef32B8A64251BB89aF14E27043b6",
+      "bmc": "0x9Fd9e050682A8795dEa6eE70870A82a513d390Ac",
+      "bmv": "0x0a42d5c21EF16aec1c31c4511EdCaA9648a9538C",
+      "xcall": "0x908169ab780de828dCd014Dd9f3768BB65C46e37",
+      "dapp": "0xA77a7545Fb4e35bDB0D96144c0e771305Dc3D7fB"
+    },
+    "blockNum": 31022641
+  },
+  "link": {
+    "src": "berlin",
+    "dst": "bsc"
+  }
+}
