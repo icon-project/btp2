@@ -51,7 +51,7 @@ type Queue struct {
 }
 
 type relayMessageTx struct {
-	id     int
+	id     string
 	txHash []byte
 }
 
@@ -60,7 +60,7 @@ func NewQueue() *Queue {
 	return queue
 }
 
-func (q *Queue) enqueue(id int, txHash []byte) error {
+func (q *Queue) enqueue(id string, txHash []byte) error {
 	if MaxQueueSize <= len(q.values) {
 		return fmt.Errorf("queue full")
 	}
@@ -72,7 +72,7 @@ func (q *Queue) enqueue(id int, txHash []byte) error {
 	return nil
 }
 
-func (q *Queue) dequeue(id int) {
+func (q *Queue) dequeue(id string) {
 	for i, rm := range q.values {
 		if rm.id == id {
 			q.values = q.values[i+1:]
@@ -93,7 +93,7 @@ type sender struct {
 	c   *client.Client
 	src btpTypes.BtpAddress
 	dst btpTypes.BtpAddress
-	w   client.Wallet
+	w   btpTypes.Wallet
 	l   log.Logger
 	opt struct {
 	}
@@ -103,7 +103,7 @@ type sender struct {
 	queue              *Queue
 }
 
-func newSender(src, dst btpTypes.BtpAddress, w client.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
+func newSender(src, dst btpTypes.BtpAddress, w btpTypes.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
 	s := &sender{
 		src:   src,
 		dst:   dst,
@@ -156,15 +156,15 @@ func (s *sender) GetMarginForLimit() int64 {
 	return 0
 }
 
-func (s *sender) Relay(rm btpTypes.RelayMessage) (int, error) {
+func (s *sender) Relay(rm btpTypes.RelayMessage) (string, error) {
 	//check send queue
 	if MaxQueueSize <= s.queue.len() {
-		return 0, errors.InvalidStateError.New("pending queue full")
+		return "", errors.InvalidStateError.New("pending queue full")
 	}
 
 	thp, err := s._relay(rm)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	s.queue.enqueue(rm.Id(), thp.Hash.Bytes())
@@ -172,7 +172,7 @@ func (s *sender) Relay(rm btpTypes.RelayMessage) (int, error) {
 	return rm.Id(), nil
 }
 
-func (s *sender) result(id int, txh *client.TransactionHashParam) {
+func (s *sender) result(id string, txh *client.TransactionHashParam) {
 	_, err := s.GetResult(txh)
 	s.queue.dequeue(id)
 
@@ -187,7 +187,7 @@ func (s *sender) result(id int, txh *client.TransactionHashParam) {
 			}
 		}
 	} else {
-		s.l.Debugf("result success rm id : %d , txHash : %v", id, txh.Hash)
+		s.l.Debugf("result success rm id : %s , txHash : %v", id, txh.Hash)
 		s.rr <- &btpTypes.RelayResult{
 			Id:        id,
 			Err:       -1,

@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/icon-project/btp2/common/cli"
-	"github.com/icon-project/btp2/common/link"
+	"github.com/icon-project/btp2/common/linkfactory"
 	"github.com/icon-project/btp2/common/log"
 )
 
@@ -47,7 +47,7 @@ var logoLines = []string{
 
 func main() {
 	rootCmd, rootVc := cli.NewCommand(nil, nil, "relay", "BTP Relay CLI")
-	cfg := &link.Config{}
+	cfg := &linkfactory.Config{}
 	rootCmd.Long = "Command Line Interface of Relay for Blockchain Transmission Protocol"
 	cli.SetEnvKeyReplacer(rootVc, strings.NewReplacer(".", "_"))
 	//rootVc.Debug()
@@ -94,7 +94,7 @@ func main() {
 	rootPFlags.String("src.key_store", "", "Source keyStore")
 	rootPFlags.String("src.key_password", "", "Source password of keyStore")
 	rootPFlags.String("src.key_secret", "", "Source Secret(password) file for keyStore")
-	rootPFlags.Bool("src.bridge_mode", false, "Source bridge mode")
+	rootPFlags.String("src.relay_mode", "trustless", "Relay Mode")
 	rootPFlags.Bool("src.latest_result", false, "Sends relay messages regardless of final status reception.")
 	rootPFlags.Bool("src.filled_block_update", false, "Create relayMessage for all data received from the source network")
 
@@ -104,7 +104,7 @@ func main() {
 	rootPFlags.String("dst.key_store", "", "Destination keyStore")
 	rootPFlags.String("dst.key_password", "", "Destination password of keyStore")
 	rootPFlags.String("dst.key_secret", "", "Destination Secret(password) file for keyStore")
-	rootPFlags.Bool("dst.bridge_mode", false, "Destination bridge mode")
+	rootPFlags.String("dst.relay_mode", "trustless", "Relay Mode")
 	rootPFlags.Bool("dst.latest_result", false, "Sends relay messages regardless of final status reception.")
 	rootPFlags.Bool("dst.filled_block_update", false, "Create relayMessage for all data received from the source network")
 
@@ -186,17 +186,12 @@ func main() {
 
 			modLevels, _ := cmd.Flags().GetStringToString("mod_level")
 
-			ls, err := link.NewLinkFactory(cfg, modLevels)
+			lf, err := linkfactory.NewLinkFactory(cfg, modLevels)
 			if err != nil {
 				return err
 			}
-
-			s, err := link.NewSender(cfg.Src, cfg.Dst, ls[0].GetLogger())
-			if err != nil {
-				return err
-			}
-
-			return ls[0].Start(s)
+			
+			return lf.Start()
 		},
 	}
 	rootCmd.AddCommand(startCmd)

@@ -50,7 +50,7 @@ type Queue struct {
 }
 
 type relayMessageTx struct {
-	id     int
+	id     string
 	txHash []byte
 }
 
@@ -59,7 +59,7 @@ func NewQueue() *Queue {
 	return queue
 }
 
-func (q *Queue) enqueue(id int, txHash []byte) error {
+func (q *Queue) enqueue(id string, txHash []byte) error {
 	if MaxQueueSize <= len(q.values) {
 		return fmt.Errorf("queue full")
 	}
@@ -71,7 +71,7 @@ func (q *Queue) enqueue(id int, txHash []byte) error {
 	return nil
 }
 
-func (q *Queue) dequeue(id int) {
+func (q *Queue) dequeue(id string) {
 	for i, rm := range q.values {
 		if rm.id == id {
 			q.values = q.values[i+1:]
@@ -92,7 +92,7 @@ type sender struct {
 	c   *client.Client
 	src types.BtpAddress
 	dst types.BtpAddress
-	w   client.Wallet
+	w   types.Wallet
 	l   log.Logger
 	opt struct {
 		StepLimit int64
@@ -102,7 +102,7 @@ type sender struct {
 	queue              *Queue
 }
 
-func newSender(src, dst types.BtpAddress, w client.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) types.Sender {
+func newSender(src, dst types.BtpAddress, w types.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) types.Sender {
 	s := &sender{
 		src:   src,
 		dst:   dst,
@@ -133,21 +133,21 @@ func (s *sender) Stop() {
 	close(s.rr)
 }
 
-func (s *sender) Relay(rm types.RelayMessage) (int, error) {
+func (s *sender) Relay(rm types.RelayMessage) (string, error) {
 	//check send queue
 	if MaxQueueSize <= s.queue.len() {
-		return 0, errors.InvalidStateError.New("pending queue full")
+		return "", errors.InvalidStateError.New("pending queue full")
 	}
 	s.l.Debugf("_relay src address:%s, rm id:%d, rm msg:%s", s.src.String(), rm.Id(), hex.EncodeToString(rm.Bytes()[:]))
 
 	thp, err := s._relay(rm)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	b, err := thp.Hash.Value()
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	s.queue.enqueue(rm.Id(), b)
@@ -189,7 +189,7 @@ func (s *sender) _relay(rm types.RelayMessage) (*client.TransactionHashParam, er
 	}
 }
 
-func (s *sender) result(id int, txh *client.TransactionHashParam) {
+func (s *sender) result(id string, txh *client.TransactionHashParam) {
 	_, err := s.GetResult(txh)
 	s.queue.dequeue(id)
 
@@ -204,7 +204,7 @@ func (s *sender) result(id int, txh *client.TransactionHashParam) {
 			}
 		}
 	} else {
-		s.l.Debugf("result success rm id : %d , txHash : %v", id, txh.Hash)
+		s.l.Debugf("result success rm id : %s , txHash : %v", id, txh.Hash)
 		s.rr <- &types.RelayResult{
 			Id:        id,
 			Err:       -1,
@@ -256,7 +256,7 @@ func (s *sender) newTransactionParam(method string, params interface{}) *client.
 		FromAddress: client.Address(s.w.Address()),
 		ToAddress:   client.Address(s.dst.Account()),
 		NetworkID:   client.HexInt(s.dst.NetworkID()),
-		StepLimit:   client.NewHexInt(s.opt.StepLimit),
+		StepLimit:   client.NewHexInt(s.opt.StepLimit), //TODO stepLimit estimate
 		DataType:    "call",
 		Data: &client.CallData{
 			Method: method,

@@ -1,4 +1,4 @@
-package link
+package linkfactory
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"github.com/icon-project/btp2/chain/ethbr"
 	"github.com/icon-project/btp2/chain/icon"
 	"github.com/icon-project/btp2/common/config"
+	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
 )
@@ -25,26 +26,46 @@ const (
 	HARDHAT = "hardhat"
 )
 
-type LinkFactory struct {
+type LinkInfo struct {
 	link types.Link
 	l    log.Logger
 }
 
-func (l *LinkFactory) GetLogger() log.Logger {
+func (l *LinkInfo) GetLogger() log.Logger {
 	return l.l
 }
 
-func (l *LinkFactory) Start(sender types.Sender) error {
-	linkErrCh := make(chan error)
+func (l *LinkInfo) Start(sender types.Sender, errCh chan error) error {
 	go func() {
 		err := l.link.Start(sender)
 		select {
-		case linkErrCh <- err:
+		case errCh <- err:
 		default:
 		}
 	}()
 
 	return nil
+}
+
+func (l *LinkInfo) Stop() {
+	l.link.Stop()
+}
+
+func NewLinkInfo(srcCfg chain.BaseConfig, dstCfg chain.BaseConfig, lc LogConfig, fc config.FileConfig, modLevels map[string]string) (*LinkInfo, error) {
+	var lk types.Link
+	l := setLogger(srcCfg, lc, fc, modLevels)
+	l.Debugln(fc.FilePath, fc.BaseDir)
+	if fc.BaseDir == "" {
+		fc.BaseDir = path.Join(".", ".relay", srcCfg.Address.NetworkAddress())
+	}
+
+	r := newReceiver(srcCfg, dstCfg, l)
+	lk = link.NewLink(srcCfg, dstCfg, r, l)
+	linkInfo := &LinkInfo{
+		link: lk,
+		l:    l,
+	}
+	return linkInfo, nil
 }
 
 //func (l *LinkFactory) Start(srcCfg chain.BaseConfig, dstCfg chain.BaseConfig) error {
@@ -68,83 +89,99 @@ func (l *LinkFactory) Start(sender types.Sender) error {
 //	return nil
 //}
 
-func NewLinkFactory(cfg *Config, modLevels map[string]string) ([]*LinkFactory, error) {
-	linkFactorys := make([]*LinkFactory, 0)
+type LinkFactory struct {
+	linkInfos []*LinkInfo
+	senders   []types.Sender
+}
+
+func (l *LinkFactory) Start() error {
+	linkErrCh := make(chan error)
+
+	for i, linkInfo := range l.linkInfos {
+		if err := linkInfo.Start(l.senders[i], linkErrCh); err != nil {
+			return err
+		}
+	}
+
+	for {
+		select {
+		case err := <-linkErrCh:
+			if err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func (l *LinkFactory) Stop() {
+	for i, linkInfo := range l.linkInfos {
+		linkInfo.Stop()
+		l.senders[i].Stop()
+	}
+}
+
+func NewLinkFactory(cfg *Config, modLevels map[string]string) (*LinkFactory, error) {
+	lf := &LinkFactory{
+		linkInfos: make([]*LinkInfo, 0),
+		senders:   make([]types.Sender, 0),
+	}
+
 	switch cfg.Direction {
 	case FrontDirection:
-		lf, err := newLinkFactory(cfg.Src, cfg.Dst, cfg.LogConfig, cfg.FileConfig, modLevels)
+		linkInfo, err := NewLinkInfo(cfg.Src, cfg.Dst, cfg.LogConfig, cfg.FileConfig, modLevels)
 		if err != nil {
 			return nil, err
 		}
-
-		linkFactorys = append(linkFactorys, lf)
-
+		sender, err := NewSender(cfg.Src, cfg.Dst, linkInfo.GetLogger())
+		if err != nil {
+			return nil, err
+		}
+		lf.linkInfos = append(lf.linkInfos, linkInfo)
+		lf.senders = append(lf.senders, sender)
 	case ReverseDirection:
-		lf, err := newLinkFactory(cfg.Dst, cfg.Src, cfg.LogConfig, cfg.FileConfig, modLevels)
+		linkInfo, err := NewLinkInfo(cfg.Dst, cfg.Src, cfg.LogConfig, cfg.FileConfig, modLevels)
 		if err != nil {
 			return nil, err
 		}
-		linkFactorys = append(linkFactorys, lf)
+		sender, err := NewSender(cfg.Dst, cfg.Src, linkInfo.GetLogger())
+		if err != nil {
+			return nil, err
+		}
+		lf.linkInfos = append(lf.linkInfos, linkInfo)
+		lf.senders = append(lf.senders, sender)
 
 	case BothDirection:
-		srcLf, err := newLinkFactory(cfg.Src, cfg.Dst, cfg.LogConfig, cfg.FileConfig, modLevels)
+		srcLinkInfo, err := NewLinkInfo(cfg.Src, cfg.Dst, cfg.LogConfig, cfg.FileConfig, modLevels)
 		if err != nil {
 			return nil, err
 		}
-
-		linkFactorys = append(linkFactorys, srcLf)
-
-		dstLf, err := newLinkFactory(cfg.Dst, cfg.Src, cfg.LogConfig, cfg.FileConfig, modLevels)
+		srcSender, err := NewSender(cfg.Src, cfg.Dst, srcLinkInfo.GetLogger())
 		if err != nil {
 			return nil, err
 		}
-		linkFactorys = append(linkFactorys, dstLf)
+		lf.linkInfos = append(lf.linkInfos, srcLinkInfo)
+		lf.senders = append(lf.senders, srcSender)
+
+		dstLinkInfo, err := NewLinkInfo(cfg.Dst, cfg.Src, cfg.LogConfig, cfg.FileConfig, modLevels)
+		if err != nil {
+			return nil, err
+		}
+		dstSender, err := NewSender(cfg.Dst, cfg.Src, dstLinkInfo.GetLogger())
+		if err != nil {
+			return nil, err
+		}
+		lf.linkInfos = append(lf.linkInfos, dstLinkInfo)
+		lf.senders = append(lf.senders, dstSender)
 
 	default:
 		return nil, fmt.Errorf("Not supported direction:%s", cfg.Direction)
 	}
 
-	return linkFactorys, nil
-}
-
-func newLinkFactory(srcCfg chain.BaseConfig, dstCfg chain.BaseConfig, lc LogConfig, fc config.FileConfig, modLevels map[string]string) (*LinkFactory, error) {
-	var lk types.Link
-	l := setLogger(srcCfg, dstCfg, lc, fc, modLevels)
-	l.Debugln(fc.FilePath, fc.BaseDir)
-	if fc.BaseDir == "" {
-		fc.BaseDir = path.Join(".", ".relay", srcCfg.Address.NetworkAddress())
-	}
-
-	r := newReceiver(srcCfg, dstCfg, l)
-	lk = NewLink(srcCfg, dstCfg, r, l)
-	lf := &LinkFactory{
-		link: lk,
-		l:    l,
-	}
 	return lf, nil
 }
 
-func NewLink(srcCfg, dstCfg chain.BaseConfig, r Receiver, l log.Logger) types.Link {
-	link := &Link{
-		l:      l.WithFields(log.Fields{log.FieldKeyChain: fmt.Sprintf("%s", dstCfg.Address.NetworkID())}),
-		srcCfg: srcCfg,
-		dstCfg: dstCfg,
-		r:      r,
-		rms:    make([]*relayMessage, 0),
-		rss:    make([]ReceiveStatus, 0),
-		rmi: &relayMessageItem{
-			rmis: make([][]RelayMessageItem, 0),
-			size: 0,
-		},
-		blsChannel: make(chan *types.BMCLinkStatus),
-		relayState: RUNNING,
-	}
-	link.rmi.rmis = append(link.rmi.rmis, make([]RelayMessageItem, 0))
-	return link
-}
-
-func newReceiver(srcCfg chain.BaseConfig, dstCfg chain.BaseConfig, l log.Logger) Receiver {
-	var receiver Receiver
+func newReceiver(srcCfg chain.BaseConfig, dstCfg chain.BaseConfig, l log.Logger) link.Receiver {
+	var receiver link.Receiver
 
 	switch srcCfg.Address.BlockChain() {
 	case ICON:
@@ -167,7 +204,7 @@ func newReceiver(srcCfg chain.BaseConfig, dstCfg chain.BaseConfig, l log.Logger)
 func NewSender(srcCfg, dstCfg chain.BaseConfig, l log.Logger) (types.Sender, error) {
 	var sender types.Sender
 	var err error
-	switch srcCfg.Address.BlockChain() {
+	switch dstCfg.Address.BlockChain() {
 	case ICON:
 		sender, err = icon.NewSender(srcCfg.Address, dstCfg, l)
 		if err != nil {
@@ -191,8 +228,8 @@ func NewSender(srcCfg, dstCfg chain.BaseConfig, l log.Logger) (types.Sender, err
 	return sender, nil
 }
 
-func setLogger(srcCfg, dstCfg chain.BaseConfig, lc LogConfig, fc config.FileConfig, modLevels map[string]string) log.Logger {
-	l := log.WithFields(log.Fields{log.FieldKeyWallet: srcCfg.Address.NetworkID() + "2" + dstCfg.Address.NetworkAddress()})
+func setLogger(srcCfg chain.BaseConfig, lc LogConfig, fc config.FileConfig, modLevels map[string]string) log.Logger {
+	l := log.WithFields(log.Fields{log.FieldKeyChain: fmt.Sprintf("%s", srcCfg.Address.NetworkID())})
 	log.SetGlobalLogger(l)
 	stdlog.SetOutput(l.WriterLevel(log.WarnLevel))
 	if lc.LogWriter != nil {

@@ -3,7 +3,6 @@ package btp2
 import (
 	"encoding/base64"
 	"fmt"
-	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -11,15 +10,10 @@ import (
 	"github.com/icon-project/btp2/common/codec"
 	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/intconv"
-	"github.com/icon-project/btp2/common/jsonrpc"
 	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/mbt"
 	"github.com/icon-project/btp2/common/types"
-)
-
-const (
-	DefaultGetBtpMessageInterval = time.Second
 )
 
 type receiveStatus struct {
@@ -79,24 +73,6 @@ func (b *btp2) getNetworkId() error {
 	}
 
 	return nil
-}
-func (b *btp2) getBtpMessage(height int64) ([]string, error) {
-	for {
-		pr := &client.BTPBlockParam{Height: client.HexInt(intconv.FormatInt(height)), NetworkId: client.HexInt(intconv.FormatInt(b.nid))}
-		mgs, err := b.c.GetBTPMessage(pr)
-		if err != nil {
-			if je, ok := err.(*jsonrpc.Error); ok {
-				switch je.Code {
-				case client.JsonrpcErrorCodeNotFound:
-					<-time.After(DefaultGetBtpMessageInterval)
-					continue
-				default:
-					return nil, err
-				}
-			}
-		}
-		return mgs, nil
-	}
 }
 
 func (b *btp2) getBtpHeader(height int64) ([]byte, []byte, error) {
@@ -283,7 +259,7 @@ func (b *btp2) clearReceiveStatus(bls *types.BMCLinkStatus) {
 }
 
 func (b *btp2) getMessage(height int64) (*mbt.MerkleBinaryTree, error) {
-	msgs, err := b.getBtpMessage(height)
+	msgs, err := b.c.GetBTPMessage(height, b.nid)
 	if err != nil {
 		return nil, err
 	}
@@ -319,14 +295,14 @@ func (b *btp2) Monitoring(bls *types.BMCLinkStatus) error {
 		b.c.CloseMonitor(conn)
 		//Restart Monitoring
 		ls := &types.BMCLinkStatus{}
-		ls.TxSeq = b.rs.Seq()
+		ls.RxSeq = b.rs.Seq()
 		ls.Verifier.Height = b.rs.Height()
 		b.l.Debugf("Restart Monitoring")
 		b.Monitoring(ls)
 	}
 	onConn := func(conn *websocket.Conn) {
 		b.l.Debugf("ReceiveLoop monitorBTP2Block height:%d seq:%d networkId:%d connected %s",
-			bls.Verifier.Height, bls.TxSeq, b.nid, conn.LocalAddr().String())
+			bls.Verifier.Height, bls.RxSeq, b.nid, conn.LocalAddr().String())
 	}
 
 	err := b.monitorBTP2Block(req, bls, onConn, onErr)
@@ -337,8 +313,14 @@ func (b *btp2) Monitoring(bls *types.BMCLinkStatus) error {
 }
 
 func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus, scb func(conn *websocket.Conn), errCb func(*websocket.Conn, error)) error {
+	vs := &client.VerifierStatus{}
+	_, err := codec.RLP.UnmarshalFromBytes(bls.Verifier.Extra, vs)
+	if err != nil {
+		return err
+	}
+
 	if bls.RxSeq != 0 {
-		b.seq = bls.RxSeq
+		b.seq = bls.RxSeq + vs.SequenceOffset
 	}
 
 	if b.rs.Height() == 0 {
@@ -356,9 +338,9 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 		if _, err = codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
 			return err
 		}
-
-		if bh.MainHeight != b.startHeight {
-			msgs, err := b.getBtpMessage(bh.MainHeight)
+		firstMessageSN := bh.UpdateNumber >> 1
+		if firstMessageSN == b.seq && bh.MainHeight != b.startHeight {
+			msgs, err := b.c.GetBTPMessage(bh.MainHeight, b.nid)
 			if err != nil {
 				return err
 			}
@@ -373,6 +355,7 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 			b.l.Debugf("monitor info : Height:%d  UpdateNumber:%d  MessageCnt:%d  Seq:%d ", bh.MainHeight, bh.UpdateNumber, len(msgs), b.seq)
 			b.rsc <- rs
 		}
+
 		return nil
 	}, scb, errCb)
 }

@@ -1,4 +1,4 @@
-package link
+package linkfactory
 
 import (
 	"github.com/icon-project/btp2/chain"

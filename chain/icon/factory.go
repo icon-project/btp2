@@ -43,7 +43,7 @@ func NewSender(srcAddr types.BtpAddress, cfg chain.BaseConfig, l log.Logger) (ty
 	return newSender(srcAddr, cfg.Address, w, cfg.Endpoint, cfg.Options, l), nil
 }
 
-func Wallet(passwd, secret string, keyStore json.RawMessage) (wallet.Wallet, error) {
+func Wallet(passwd, secret string, keyStore json.RawMessage) (types.Wallet, error) {
 	pw, err := resolvePassword(secret, passwd)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func resolvePassword(keySecret, keyStorePass string) ([]byte, error) {
 		if keyStorePass != "" {
 			return []byte(keyStorePass), nil
 		} else {
-			//TODO
+			//TODO add error message
 			return nil, fmt.Errorf("")
 		}
 	}

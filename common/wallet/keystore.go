@@ -16,6 +16,7 @@ import (
 	"github.com/icon-project/btp2/common"
 	"github.com/icon-project/btp2/common/crypto"
 	"github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/types"
 )
 
 const (
@@ -143,7 +144,7 @@ func ReadAddressFromKeyStore(data []byte) (*common.Address, error) {
 	return &ksData.Address, nil
 }
 
-func DecryptKeyStore(data, pw []byte) (Wallet, error) {
+func DecryptKeyStore(data, pw []byte) (types.Wallet, error) {
 	ksdata, err := NewKeyStoreData(data)
 	if err != nil {
 		return nil, err

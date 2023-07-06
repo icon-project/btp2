@@ -25,7 +25,7 @@ import (
 var BigIntOne = big.NewInt(1)
 
 type RelayMessage interface {
-	Id() int
+	Id() string
 	Bytes() []byte
 	Size() int64
 }
@@ -51,7 +51,7 @@ type BMCLinkStatus struct {
 }
 
 type RelayResult struct {
-	Id        int
+	Id        string
 	Err       errors.Code
 	Finalized bool
 }
@@ -60,7 +60,7 @@ type Sender interface {
 	Start() (<-chan *RelayResult, error)
 	Stop()
 	GetStatus() (*BMCLinkStatus, error)
-	Relay(rm RelayMessage) (int, error)
+	Relay(rm RelayMessage) (string, error)
 	GetMarginForLimit() int64
 	TxSizeLimit() int
 }

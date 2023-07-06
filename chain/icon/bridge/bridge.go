@@ -199,17 +199,6 @@ func (b *bridge) FinalizedStatus(blsc <-chan *types.BMCLinkStatus) {
 	}()
 }
 
-// TODO Refactoring reduplication func
-func (b *bridge) getBtpMessage(height int64) ([]string, error) {
-	pr := &client.BTPBlockParam{Height: client.HexInt(intconv.FormatInt(height)), NetworkId: client.HexInt(intconv.FormatInt(b.nid))}
-	mgs, err := b.c.GetBTPMessage(pr)
-	if err != nil {
-		return nil, err
-	}
-
-	return mgs, nil
-}
-
 func (b *bridge) Monitoring(bls *types.BMCLinkStatus) error {
 	if bls.Verifier.Height < 1 {
 		return fmt.Errorf("cannot catchup from zero height")
@@ -226,14 +215,14 @@ func (b *bridge) Monitoring(bls *types.BMCLinkStatus) error {
 		b.c.CloseMonitor(conn)
 		//Restart Monitoring
 		ls := &types.BMCLinkStatus{}
-		ls.TxSeq = b.rs.Seq()
+		ls.RxSeq = b.rs.Seq()
 		ls.Verifier.Height = b.rs.Height()
 		b.l.Debugf("Restart Monitoring")
 		b.Monitoring(ls)
 	}
 	onConn := func(conn *websocket.Conn) {
 		b.l.Debugf("ReceiveLoop monitorBTP2Block height:%d seq:%d networkId:%d connected %s",
-			bls.Verifier.Height, bls.TxSeq, b.nid, conn.LocalAddr().String())
+			bls.Verifier.Height, bls.RxSeq, b.nid, conn.LocalAddr().String())
 	}
 
 	err := b.monitorBTP2Block(req, bls, onConn, onErr)
@@ -266,8 +255,9 @@ func (b *bridge) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStat
 		if _, err = codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
 			return err
 		}
+
 		if bh.MainHeight != b.startHeight {
-			msgs, err := b.getBtpMessage(bh.MainHeight)
+			msgs, err := b.c.GetBTPMessage(bh.MainHeight, b.nid)
 			if err != nil {
 				return err
 			}

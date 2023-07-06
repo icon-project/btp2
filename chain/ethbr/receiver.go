@@ -73,6 +73,7 @@ type ethbr struct {
 	nid         int64
 	rsc         chan interface{}
 	rss         []*receiveStatus
+	rs          *receiveStatus
 	seq         int64
 	startHeight int64
 	opt         struct {
@@ -87,6 +88,7 @@ func newEthBridge(src, dst btpTypes.BtpAddress, endpoint string, l log.Logger, o
 		l:   l,
 		rsc: make(chan interface{}),
 		rss: make([]*receiveStatus, 0),
+		rs:  &receiveStatus{},
 	}
 	c.c = client.NewClient(endpoint, l)
 	b, err := json.Marshal(opt)
@@ -265,6 +267,17 @@ func (e *ethbr) Monitoring(bls *btpTypes.BMCLinkStatus) error {
 		e.seq = bls.RxSeq
 	}
 
+	errCb := func(height int64, err error) {
+		e.l.Debugf("onError err:%+v", err)
+		e.c.CloseMonitor()
+		//Restart Monitoring
+		ls := &btpTypes.BMCLinkStatus{}
+		ls.RxSeq = e.seq
+		ls.Verifier.Height = height
+		e.l.Debugf("Restart Monitoring")
+		e.Monitoring(ls)
+	}
+
 	return e.c.MonitorBlock(br,
 		func(v *client.BlockNotification) error {
 
@@ -329,8 +342,7 @@ func (e *ethbr) Monitoring(bls *btpTypes.BMCLinkStatus) error {
 			}
 
 			return nil
-		},
-	)
+		}, errCb)
 }
 
 func (e *ethbr) newBlockUpdate(v *client.BlockNotification) (*client.BlockUpdate, error) {

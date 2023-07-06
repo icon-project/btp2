@@ -1,7 +1,7 @@
 package link
 
 import (
-	"math/rand"
+	"strconv"
 	"sync"
 
 	"github.com/icon-project/btp2/chain"
@@ -18,7 +18,7 @@ const (
 )
 
 type relayMessage struct {
-	id            int
+	id            string
 	bls           *types.BMCLinkStatus
 	bpHeight      int64
 	message       []byte
@@ -26,7 +26,7 @@ type relayMessage struct {
 	sendingStatus bool
 }
 
-func (r *relayMessage) Id() int {
+func (r *relayMessage) Id() string {
 	return r.id
 }
 
@@ -70,6 +70,25 @@ type Link struct {
 	bls        *types.BMCLinkStatus
 	blsChannel chan *types.BMCLinkStatus
 	relayState RelayState
+}
+
+func NewLink(srcCfg, dstCfg chain.BaseConfig, r Receiver, l log.Logger) types.Link {
+	link := &Link{
+		l:      l,
+		srcCfg: srcCfg,
+		dstCfg: dstCfg,
+		r:      r,
+		rms:    make([]*relayMessage, 0),
+		rss:    make([]ReceiveStatus, 0),
+		rmi: &relayMessageItem{
+			rmis: make([][]RelayMessageItem, 0),
+			size: 0,
+		},
+		blsChannel: make(chan *types.BMCLinkStatus),
+		relayState: RUNNING,
+	}
+	link.rmi.rmis = append(link.rmi.rmis, make([]RelayMessageItem, 0))
+	return link
 }
 
 func (l *Link) Start(sender types.Sender) error {
@@ -249,7 +268,7 @@ func (l *Link) appendRelayMessage() error {
 		}
 
 		rm := &relayMessage{
-			id:       rand.Int(),
+			id:       l.srcCfg.Address.NetworkID() + "_" + strconv.FormatInt(l.bls.Verifier.Height, 16) + "_" + strconv.FormatInt(l.bls.RxSeq, 16),
 			bls:      &types.BMCLinkStatus{},
 			bpHeight: l.r.GetHeightForSeq(l.bls.RxSeq),
 			message:  m,
@@ -327,14 +346,27 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 
 func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
 	var mpLen int64
+	rs := l.getReceiveStatusForHeight(l.bls.Verifier.Height)
+	if rs == nil {
+		return 0, nil
+	}
 	for {
+		if rs.Seq() <= l.bls.RxSeq {
+			break
+		}
+
 		mp, err := l.buildMessageProof()
 		if err != nil {
 			return 0, err
 		}
 
 		if mp == nil || mp.Len() == 0 {
-			return 0, nil
+			if len(l.rmi.rmis) != 0 {
+				l.appendRelayMessage()
+				continue
+			} else {
+				return 0, nil
+			}
 		}
 
 		mpLen += mp.Len()
@@ -355,7 +387,6 @@ func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
 			}
 		}
 		l.appendRelayMessageItem(mp)
-
 	}
 	return mpLen, nil
 }
@@ -420,7 +451,7 @@ func (l *Link) getRelayMessage(bls *types.BMCLinkStatus) *relayMessage {
 	return nil
 }
 
-func (l *Link) getRelayMessageForId(id int) *relayMessage {
+func (l *Link) getRelayMessageForId(id string) *relayMessage {
 	for _, rm := range l.rms {
 		if rm.Id() == id {
 			return rm
@@ -444,7 +475,7 @@ func (l *Link) removeAllRelayMessage() {
 	l.rms = l.rms[:0]
 }
 
-func (l *Link) updateBlockProof(id int) error {
+func (l *Link) updateBlockProof(id string) error {
 	rm := l.getRelayMessageForId(id)
 
 	for _, rmi := range rm.RelayMessageItems() {
@@ -472,7 +503,7 @@ func (l *Link) resetRelayMessageItem() {
 	l.rmi.size = 0
 }
 
-func (l *Link) successRelayMessage(id int) error {
+func (l *Link) successRelayMessage(id string) error {
 	rm := l.getRelayMessageForId(id)
 	l.removeRelayMessage(rm.BMCLinkStatus())
 	l.removeReceiveStatus(rm.BMCLinkStatus())

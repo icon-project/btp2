@@ -6,18 +6,12 @@ import (
 	"os"
 
 	"github.com/icon-project/btp2/chain"
-	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
 	"github.com/icon-project/btp2/common/wallet"
 )
 
-const (
-	BRIDGE    = "bridge"
-	TRUSTLESS = "trustless"
-)
-
-func NewReceiver(srcCfg, dstCfg chain.BaseConfig, l log.Logger) link.Receiver {
+func NewReceiver(srcCfg, dstCfg chain.BaseConfig, l log.Logger) *ethbr {
 	receiver := newEthBridge(srcCfg.Address, dstCfg.Address, srcCfg.Endpoint, l, srcCfg.Options)
 	return receiver
 }
@@ -32,7 +26,7 @@ func NewSender(srcAddr types.BtpAddress, cfg chain.BaseConfig, l log.Logger) (ty
 	return newSender(srcAddr, cfg.Address, w, cfg.Endpoint, cfg.Options, l), nil
 }
 
-func Wallet(passwd, secret string, keyStore json.RawMessage) (wallet.Wallet, error) {
+func Wallet(passwd, secret string, keyStore json.RawMessage) (types.Wallet, error) {
 	pw, err := resolvePassword(secret, passwd)
 	if err != nil {
 		return nil, err

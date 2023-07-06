@@ -49,19 +49,13 @@ var (
 	BlockRetryLimit                   = 5
 )
 
-type Wallet interface {
-	Sign(data []byte) ([]byte, error)
-	Address() string
-}
-
 type Client struct {
-	uri          string
-	log          log.Logger
-	subscription *rpc.ClientSubscription
-	ethClient    *ethclient.Client
-	rpcClient    *rpc.Client
-	chainID      *big.Int
-	stop         <-chan bool
+	uri       string
+	log       log.Logger
+	ethClient *ethclient.Client
+	rpcClient *rpc.Client
+	chainID   *big.Int
+	stop      <-chan bool
 }
 
 func toBlockNumArg(number *big.Int) string {
@@ -203,7 +197,7 @@ func (c *Client) GetBlockNumber() (uint64, error) {
 }
 
 // Poll deprecated
-func (c *Client) Poll(cb func(bh *types.Header) error) error {
+func (c *Client) Poll(cb func(bh *types.Header) error, errCb func(int64, error)) error {
 	n, err := c.GetBlockNumber()
 	if err != nil {
 		return err
@@ -227,7 +221,7 @@ func (c *Client) Poll(cb func(bh *types.Header) error) error {
 
 			if err = cb(bh); err != nil {
 				c.log.Errorf("Poll callback return err:%+v", err)
-				return err
+				errCb(bh.Number.Int64()-1, err)
 			}
 
 			current.Add(current, big.NewInt(1))
@@ -235,7 +229,7 @@ func (c *Client) Poll(cb func(bh *types.Header) error) error {
 	}
 }
 
-func (c *Client) MonitorBlock(br *BlockRequest, cb func(b *BlockNotification) error) error {
+func (c *Client) MonitorBlock(br *BlockRequest, cb func(b *BlockNotification) error, errCb func(int64, error)) error {
 	onBlockHeader := func(bh *types.Header) error {
 		bn := &BlockNotification{
 			Hash:   bh.Hash(),
@@ -277,12 +271,12 @@ func (c *Client) MonitorBlock(br *BlockRequest, cb func(b *BlockNotification) er
 			}
 		}
 		return onBlockHeader(bh)
-	})
+	}, errCb)
 }
 
-func (c *Client) Monitor(cb func(bh *types.Header) error) error {
+func (c *Client) Monitor(cb func(bh *types.Header) error, errCb func(int64, error)) error {
 	if strings.HasPrefix(c.uri, "http") {
-		return c.Poll(cb)
+		return c.Poll(cb, errCb)
 	}
 	var (
 		s   ethereum.Subscription
@@ -292,7 +286,7 @@ func (c *Client) Monitor(cb func(bh *types.Header) error) error {
 	if s, err = c.ethClient.SubscribeNewHead(context.Background(), ch); err != nil {
 		if rpc.ErrNotificationsUnsupported == err {
 			c.log.Infoln("%v, try polling", err)
-			return c.Poll(cb)
+			return c.Poll(cb, errCb)
 		}
 		return err
 	}
@@ -312,7 +306,6 @@ func (c *Client) Monitor(cb func(bh *types.Header) error) error {
 
 func (c *Client) CloseMonitor() {
 	c.log.Debugf("CloseMonitor %s", c.rpcClient)
-	c.subscription.Unsubscribe()
 	c.ethClient.Close()
 	c.rpcClient.Close()
 }
