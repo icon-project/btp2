@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/icon-project/btp2/common"
 	"github.com/icon-project/btp2/common/intconv"
 	"github.com/icon-project/btp2/common/jsonrpc"
 	"github.com/icon-project/btp2/common/types"
@@ -278,6 +279,10 @@ type EventNotification struct {
 
 type WSEvent string
 
+type ProgressNotification struct {
+	Progress common.HexInt64 `json:"progress"`
+}
+
 const (
 	WSEventInit WSEvent = "WSEventInit"
 )
@@ -425,14 +430,16 @@ type Block struct {
 }
 
 type BTPNotification struct {
-	Header string `json:"header"`
-	Proof  string `json:"proof,omitempty"`
+	Header   string          `json:"header"`
+	Proof    string          `json:"proof,omitempty"`
+	Progress common.HexInt64 `json:"progress"`
 }
 
 type BTPRequest struct {
-	Height    HexInt `json:"height"`
-	NetworkID HexInt `json:"networkID"`
-	ProofFlag HexInt `json:"proofFlag"`
+	Height           HexInt `json:"height"`
+	NetworkID        HexInt `json:"networkID"`
+	ProofFlag        HexInt `json:"proofFlag"`
+	ProgressInterval HexInt `json:"progressInterval"`
 }
 
 type BTPNetworkInfo struct {
@@ -466,6 +473,7 @@ type BTPBlockHeader struct {
 	MessagesRoot           []byte
 	NextProofContext       []byte
 }
+
 type Dir int
 
 const (

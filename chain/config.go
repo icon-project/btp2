@@ -23,13 +23,24 @@ import (
 )
 
 type BaseConfig struct {
-	Address           types.BtpAddress       `json:"address"`
-	Endpoint          string                 `json:"endpoint"`
-	KeyStoreData      json.RawMessage        `json:"key_store"`
-	KeyStorePass      string                 `json:"key_password,omitempty"`
-	KeySecret         string                 `json:"key_secret,omitempty"`
-	RelayMode         string                 `json:"relay_mode"` //trustless, bridge
-	LatestResult      bool                   `json:"latest_result"`
-	FilledBlockUpdate bool                   `json:"filled_block_update"`
-	Options           map[string]interface{} `json:"options,omitempty"`
+	Address      types.BtpAddress `json:"address"`
+	Endpoint     string           `json:"endpoint"`
+	KeyStoreData json.RawMessage  `json:"key_store"`
+	ChainId      string           `json:"chain_id"`
+	KeyStorePass string           `json:"key_password,omitempty"`
+	KeySecret    string           `json:"key_secret,omitempty"`
+
+	Options map[string]interface{} `json:"options,omitempty"`
+}
+
+func (b BaseConfig) GetAddress() types.BtpAddress {
+	return b.Address
+}
+
+func (b BaseConfig) GetChainId() string {
+	return b.ChainId
+}
+
+func (b BaseConfig) GetNetworkID() string {
+	return b.Address.NetworkID()
 }

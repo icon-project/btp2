@@ -36,7 +36,7 @@ func (r *receiveStatus) ReceiptProof() *ReceiptProof {
 
 type bridge struct {
 	l           log.Logger
-	src         types.BtpAddress
+	src         link.ChainConfig
 	dst         types.BtpAddress
 	c           *client.Client
 	nid         int64
@@ -73,7 +73,7 @@ func newReceiveStatus(height, rxSeq int64, sn int64, msgs []string, next types.B
 	}, nil
 }
 
-func NewBridge(src, dst types.BtpAddress, endpoint string, l log.Logger) *bridge {
+func newBridge(src link.ChainConfig, dst types.BtpAddress, endpoint string, l log.Logger) (*bridge, error) {
 	c := &bridge{
 		src: src,
 		dst: dst,
@@ -83,12 +83,12 @@ func NewBridge(src, dst types.BtpAddress, endpoint string, l log.Logger) *bridge
 		rs:  &receiveStatus{},
 	}
 	c.c = client.NewClient(endpoint, l)
-	return c
+	return c, nil
 }
 
 func (b *bridge) getNetworkId() error {
 	if b.nid == 0 {
-		nid, err := b.c.GetBTPLinkNetworkId(b.src, b.dst)
+		nid, err := b.c.GetBTPLinkNetworkId(b.src.GetAddress(), b.dst)
 		if err != nil {
 			return err
 		}
@@ -136,7 +136,7 @@ func (b *bridge) GetHeightForSeq(seq int64) int64 {
 func (b *bridge) BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
 	bus := make([]link.BlockUpdate, 0)
 	rs := b.nextReceiveStatus(bls)
-	bu := NewBlockUpdate(bls, rs.Height())
+	bu := newBlockUpdate(bls, rs.Height())
 	bus = append(bus, bu)
 	return bus, nil
 }
@@ -163,14 +163,14 @@ func (b *bridge) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.
 	for i := offset; i < int64(messageCnt); i++ {
 		size := sizeOfEvent(rs.ReceiptProof().Events[i])
 		if limit < int64(rmSize+size) {
-			return NewMessageProof(bls, bls.RxSeq+i, trp)
+			return newMessageProof(bls, bls.RxSeq+i, trp)
 		}
 		trp.Events = append(trp.Events, rs.ReceiptProof().Events[i])
 		rmSize += size
 	}
 
 	//last event
-	return NewMessageProof(bls, bls.RxSeq+int64(messageCnt), trp)
+	return newMessageProof(bls, bls.RxSeq+int64(messageCnt), trp)
 
 }
 
@@ -233,7 +233,7 @@ func (b *bridge) Monitoring(bls *types.BMCLinkStatus) error {
 }
 
 func (b *bridge) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus, scb func(conn *websocket.Conn), errCb func(*websocket.Conn, error)) error {
-	offset, err := b.c.GetBTPLinkOffset(b.src, b.dst)
+	offset, err := b.c.GetBTPLinkOffset(b.src.GetAddress(), b.dst)
 	if err != nil {
 		return err
 	}

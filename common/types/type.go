@@ -56,11 +56,18 @@ type RelayResult struct {
 	Finalized bool
 }
 
+type Preference struct {
+	TxSizeLimit       int64
+	MarginForLimit    int64
+	LatestResult      bool
+	FilledBlockUpdate bool
+	Other             map[string]interface{}
+}
+
 type Sender interface {
 	Start() (<-chan *RelayResult, error)
 	Stop()
 	GetStatus() (*BMCLinkStatus, error)
 	Relay(rm RelayMessage) (string, error)
-	GetMarginForLimit() int64
-	TxSizeLimit() int
+	GetPreference() Preference
 }

@@ -3,17 +3,27 @@ package btp2
 import (
 	"encoding/base64"
 	"fmt"
+	"math/big"
+	"path/filepath"
+	"time"
 
 	"github.com/gorilla/websocket"
 
 	"github.com/icon-project/btp2/chain/icon/client"
 	"github.com/icon-project/btp2/common/codec"
+	"github.com/icon-project/btp2/common/config"
+	"github.com/icon-project/btp2/common/db"
 	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/intconv"
 	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/mbt"
 	"github.com/icon-project/btp2/common/types"
+)
+
+const (
+	DefaultDBType           = db.GoLevelDBBackend
+	DefaultProgressInterval = 5 * time.Minute //5min
 )
 
 type receiveStatus struct {
@@ -38,19 +48,21 @@ func newReceiveStatus(height, seq int64) (*receiveStatus, error) {
 }
 
 type btp2 struct {
-	l           log.Logger
-	src         types.BtpAddress
-	dst         types.BtpAddress
-	c           *client.Client
-	nid         int64
-	rsc         chan interface{}
-	rss         []*receiveStatus
-	rs          *receiveStatus
-	seq         int64
-	startHeight int64
+	l             log.Logger
+	src           link.ChainConfig
+	dst           types.BtpAddress
+	c             *client.Client
+	receiveHeight int64
+	bk            db.Bucket
+	nid           int64
+	rsc           chan interface{}
+	rss           []*receiveStatus
+	rs            *receiveStatus
+	seq           int64
+	startHeight   int64
 }
 
-func NewBTP2(src, dst types.BtpAddress, endpoint string, l log.Logger) *btp2 {
+func newBTP2(src link.ChainConfig, dst types.BtpAddress, endpoint string, fileCfg config.FileConfig, l log.Logger) (*btp2, error) {
 	c := &btp2{
 		src: src,
 		dst: dst,
@@ -60,12 +72,53 @@ func NewBTP2(src, dst types.BtpAddress, endpoint string, l log.Logger) *btp2 {
 		rs:  &receiveStatus{},
 	}
 	c.c = client.NewClient(endpoint, l)
-	return c
+	bk, err := c.prepareDatabase(fileCfg)
+	if err != nil {
+		return nil, err
+	}
+	c.bk = bk
+	return c, nil
+}
+
+func (b *btp2) setHeightToDatabase() {
+	bytesArray := big.NewInt(b.receiveHeight).Bytes()
+	b.bk.Set([]byte("ReceiveHeight"), bytesArray)
+}
+
+func (b *btp2) prepareDatabase(fileCfg config.FileConfig) (db.Bucket, error) {
+	b.l.Debugln("open database", filepath.Join(fileCfg.AbsBaseDir()+b.src.GetNetworkID(), b.dst.NetworkAddress()))
+	database, err := db.Open(fileCfg.AbsBaseDir()+b.src.GetNetworkID(), string(DefaultDBType), b.dst.NetworkAddress())
+	if err != nil {
+		return nil, errors.Wrap(err, "fail to open database")
+	}
+	defer func() {
+		if err != nil {
+			database.Close()
+		}
+	}()
+	var bk db.Bucket
+	if bk, err = database.GetBucket("ReceiveHeight"); err != nil {
+		return nil, err
+	}
+	k := []byte("ReceiveHeight")
+	has, err := bk.Has(k)
+	if err != nil {
+		return nil, err
+	}
+
+	if has {
+		h, err := bk.Get(k)
+		if err != nil {
+			return nil, err
+		}
+		b.receiveHeight = new(big.Int).SetBytes(h).Int64()
+	}
+	return bk, nil
 }
 
 func (b *btp2) getNetworkId() error {
 	if b.nid == 0 {
-		nid, err := b.c.GetBTPLinkNetworkId(b.src, b.dst)
+		nid, err := b.c.GetBTPLinkNetworkId(b.src.GetAddress(), b.dst)
 		if err != nil {
 			return err
 		}
@@ -280,14 +333,23 @@ func (b *btp2) getMessage(height int64) (*mbt.MerkleBinaryTree, error) {
 }
 
 func (b *btp2) Monitoring(bls *types.BMCLinkStatus) error {
+	var height int64
+
 	if bls.Verifier.Height < 1 {
 		return fmt.Errorf("cannot catchup from zero height")
 	}
 
+	if b.receiveHeight > bls.Verifier.Height {
+		height = b.receiveHeight
+	} else {
+		height = bls.Verifier.Height
+	}
+
 	req := &client.BTPRequest{
-		Height:    client.NewHexInt(bls.Verifier.Height + 1),
-		NetworkID: client.NewHexInt(b.nid),
-		ProofFlag: client.NewHexInt(0),
+		Height:           client.NewHexInt(height + 1),
+		NetworkID:        client.NewHexInt(b.nid),
+		ProofFlag:        client.NewHexInt(0),
+		ProgressInterval: client.NewHexInt(int64(DefaultProgressInterval)),
 	}
 
 	onErr := func(conn *websocket.Conn, err error) {
@@ -332,6 +394,12 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 		h, err := base64.StdEncoding.DecodeString(v.Header)
 		if err != nil {
 			return err
+		}
+
+		if v.Progress.Value != 0 {
+			b.receiveHeight = v.Progress.Value
+			b.setHeightToDatabase()
+			return nil
 		}
 
 		bh := &client.BTPBlockHeader{}

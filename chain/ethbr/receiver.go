@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"path/filepath"
 	"sort"
 	"unsafe"
 
@@ -19,6 +20,8 @@ import (
 	"github.com/icon-project/btp2/chain/ethbr/binding"
 	"github.com/icon-project/btp2/chain/ethbr/client"
 	"github.com/icon-project/btp2/common/codec"
+	"github.com/icon-project/btp2/common/config"
+	"github.com/icon-project/btp2/common/db"
 	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
@@ -58,6 +61,7 @@ func newReceiveStatus(height, startSeq, lastSeq int64, rps []*client.ReceiptProo
 }
 
 const (
+	DefaultDBType       = db.GoLevelDBBackend
 	EPOCH               = 200
 	EventSignature      = "Message(string,uint256,bytes)"
 	EventIndexSignature = 0
@@ -66,22 +70,25 @@ const (
 )
 
 type ethbr struct {
-	l           log.Logger
-	src         btpTypes.BtpAddress
-	dst         btpTypes.BtpAddress
-	c           *client.Client
-	nid         int64
-	rsc         chan interface{}
-	rss         []*receiveStatus
-	rs          *receiveStatus
-	seq         int64
-	startHeight int64
-	opt         struct {
+	l             log.Logger
+	src           link.ChainConfig
+	dst           btpTypes.BtpAddress
+	c             *client.Client
+	nid           int64
+	rsc           chan interface{}
+	rss           []*receiveStatus
+	rs            *receiveStatus
+	seq           int64
+	startHeight   int64
+	receiveHeight int64
+	bk            db.Bucket
+	opt           struct {
 		StartHeight int64
 	}
 }
 
-func newEthBridge(src, dst btpTypes.BtpAddress, endpoint string, l log.Logger, opt map[string]interface{}) *ethbr {
+func newEthBridge(src link.ChainConfig, dst btpTypes.BtpAddress, endpoint string,
+	l log.Logger, fileCfg config.FileConfig, opt map[string]interface{}) (*ethbr, error) {
 	c := &ethbr{
 		src: src,
 		dst: dst,
@@ -99,7 +106,49 @@ func newEthBridge(src, dst btpTypes.BtpAddress, endpoint string, l log.Logger, o
 	if err = json.Unmarshal(b, &c.opt); err != nil {
 		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
 	}
-	return c
+
+	bk, err := c.prepareDatabase(fileCfg)
+	if err != nil {
+		return nil, err
+	}
+	c.bk = bk
+	return c, nil
+}
+
+func (e *ethbr) setHeightToDatabase() {
+	bytesArray := big.NewInt(e.receiveHeight).Bytes()
+	e.bk.Set([]byte("ReceiveHeight"), bytesArray)
+}
+
+func (e *ethbr) prepareDatabase(fileCfg config.FileConfig) (db.Bucket, error) {
+	e.l.Debugln("open database", filepath.Join(fileCfg.AbsBaseDir()+e.src.GetNetworkID(), e.dst.NetworkAddress()))
+	database, err := db.Open(fileCfg.AbsBaseDir()+e.src.GetNetworkID(), string(DefaultDBType), e.dst.NetworkAddress())
+	if err != nil {
+		return nil, errors.Wrap(err, "fail to open database")
+	}
+	defer func() {
+		if err != nil {
+			database.Close()
+		}
+	}()
+	var bk db.Bucket
+	if bk, err = database.GetBucket("ReceiveHeight"); err != nil {
+		return nil, err
+	}
+	k := []byte("ReceiveHeight")
+	has, err := bk.Has(k)
+	if err != nil {
+		return nil, err
+	}
+
+	if has {
+		h, err := bk.Get(k)
+		if err != nil {
+			return nil, err
+		}
+		e.receiveHeight = new(big.Int).SetBytes(h).Int64()
+	}
+	return bk, nil
 }
 
 func (e *ethbr) Start(bls *btpTypes.BMCLinkStatus) (<-chan interface{}, error) {
@@ -244,14 +293,14 @@ func (e *ethbr) clearReceiveStatus(bls *btpTypes.BMCLinkStatus) {
 func (e *ethbr) Monitoring(bls *btpTypes.BMCLinkStatus) error {
 	var height int64
 	fq := &ethereum.FilterQuery{
-		Addresses: []common.Address{common.HexToAddress(e.src.ContractAddress())},
+		Addresses: []common.Address{common.HexToAddress(e.src.GetAddress().ContractAddress())},
 		Topics: [][]common.Hash{
 			{crypto.Keccak256Hash([]byte(EventSignature))},
 		},
 	}
 
-	if e.opt.StartHeight > bls.Verifier.Height {
-		height = e.opt.StartHeight
+	if e.receiveHeight > bls.Verifier.Height {
+		height = e.receiveHeight
 	} else {
 		height = bls.Verifier.Height
 	}
@@ -280,7 +329,10 @@ func (e *ethbr) Monitoring(bls *btpTypes.BMCLinkStatus) error {
 
 	return e.c.MonitorBlock(br,
 		func(v *client.BlockNotification) error {
-
+			e.receiveHeight = v.Height.Int64()
+			if v.Height.Int64()%500 == 0 {
+				e.setHeightToDatabase()
+			}
 			if len(v.Logs) > 0 {
 				var startSeq int64
 				var lastSeq int64

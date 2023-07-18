@@ -25,9 +25,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/icon-project/btp2/chain"
 	"github.com/icon-project/btp2/chain/icon/client"
 	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/jsonrpc"
+	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
 )
@@ -89,12 +91,12 @@ func (q *Queue) len() int {
 }
 
 type sender struct {
-	c   *client.Client
-	src types.BtpAddress
-	dst types.BtpAddress
-	w   types.Wallet
-	l   log.Logger
-	opt struct {
+	c       *client.Client
+	srcAddr types.BtpAddress
+	dstCfg  chain.BaseConfig
+	w       types.Wallet
+	l       log.Logger
+	opt     struct {
 		StepLimit int64
 	}
 	rr                 chan *types.RelayResult
@@ -102,14 +104,14 @@ type sender struct {
 	queue              *Queue
 }
 
-func newSender(src, dst types.BtpAddress, w types.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) types.Sender {
+func NewSender(srcAddr types.BtpAddress, dstCfg link.ChainConfig, w types.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) types.Sender {
 	s := &sender{
-		src:   src,
-		dst:   dst,
-		w:     w,
-		l:     l,
-		rr:    make(chan *types.RelayResult),
-		queue: NewQueue(),
+		srcAddr: srcAddr,
+		dstCfg:  dstCfg.(chain.BaseConfig),
+		w:       w,
+		l:       l,
+		rr:      make(chan *types.RelayResult),
+		queue:   NewQueue(),
 	}
 	b, err := json.Marshal(opt)
 	if err != nil {
@@ -138,7 +140,7 @@ func (s *sender) Relay(rm types.RelayMessage) (string, error) {
 	if MaxQueueSize <= s.queue.len() {
 		return "", errors.InvalidStateError.New("pending queue full")
 	}
-	s.l.Debugf("_relay src address:%s, rm id:%d, rm msg:%s", s.src.String(), rm.Id(), hex.EncodeToString(rm.Bytes()[:]))
+	s.l.Debugf("_relay src address:%s, rm id:%d, rm msg:%s", s.srcAddr.String(), rm.Id(), hex.EncodeToString(rm.Bytes()[:]))
 
 	thp, err := s._relay(rm)
 	if err != nil {
@@ -156,17 +158,13 @@ func (s *sender) Relay(rm types.RelayMessage) (string, error) {
 	return rm.Id(), nil
 }
 
-func (s *sender) GetMarginForLimit() int64 {
-	return 0
-}
-
 func (s *sender) _relay(rm types.RelayMessage) (*client.TransactionHashParam, error) {
 	msg := rm.Bytes()
 	idx := len(msg) / txSizeLimit
 
 	if idx == 0 {
 		rmp := &client.BMCRelayMethodParams{
-			Prev:     s.src.String(),
+			Prev:     s.srcAddr.String(),
 			Messages: base64.URLEncoding.EncodeToString(msg),
 		}
 		return s.sendTransaction(s.newTransactionParam(client.BMCRelayMethod, rmp))
@@ -213,19 +211,27 @@ func (s *sender) result(id string, txh *client.TransactionHashParam) {
 	}
 }
 
-func (s *sender) TxSizeLimit() int {
-	return txSizeLimit
+// TODO config setting
+func (s *sender) GetPreference() types.Preference {
+	p := types.Preference{
+		TxSizeLimit:       int64(txSizeLimit),
+		MarginForLimit:    int64(0),
+		LatestResult:      false,
+		FilledBlockUpdate: false,
+	}
+
+	return p
 }
 
 func (s *sender) GetStatus() (*types.BMCLinkStatus, error) {
 	p := &client.CallParam{
 		FromAddress: client.Address(s.w.Address()),
-		ToAddress:   client.Address(s.dst.Account()),
+		ToAddress:   client.Address(s.dstCfg.Address.Account()),
 		DataType:    "call",
 		Data: client.CallData{
 			Method: client.BMCGetStatusMethod,
 			Params: client.BMCStatusParams{
-				Target: s.src.String(),
+				Target: s.srcAddr.String(),
 			},
 		},
 	}
@@ -254,8 +260,8 @@ func (s *sender) newTransactionParam(method string, params interface{}) *client.
 	p := &client.TransactionParam{
 		Version:     client.NewHexInt(client.JsonrpcApiVersion),
 		FromAddress: client.Address(s.w.Address()),
-		ToAddress:   client.Address(s.dst.Account()),
-		NetworkID:   client.HexInt(s.dst.NetworkID()),
+		ToAddress:   client.Address(s.dstCfg.Address.Account()),
+		NetworkID:   client.HexInt(s.dstCfg.Address.NetworkID()),
 		StepLimit:   client.NewHexInt(s.opt.StepLimit), //TODO stepLimit estimate
 		DataType:    "call",
 		Data: &client.CallData{
@@ -268,7 +274,7 @@ func (s *sender) newTransactionParam(method string, params interface{}) *client.
 
 func (s *sender) sendFragment(msg []byte, idx int) (*client.TransactionHashParam, error) {
 	fmp := &client.BMCFragmentMethodParams{
-		Prev:     s.src.String(),
+		Prev:     s.srcAddr.String(),
 		Messages: base64.URLEncoding.EncodeToString(msg),
 		Index:    client.NewHexInt(int64(idx)),
 	}

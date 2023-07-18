@@ -25,8 +25,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/icon-project/btp2/common/cli"
-	"github.com/icon-project/btp2/common/linkfactory"
+	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
+	"github.com/icon-project/btp2/common/relay"
 )
 
 var (
@@ -47,7 +48,7 @@ var logoLines = []string{
 
 func main() {
 	rootCmd, rootVc := cli.NewCommand(nil, nil, "relay", "BTP Relay CLI")
-	cfg := &linkfactory.Config{}
+	cfg := &link.Config{}
 	rootCmd.Long = "Command Line Interface of Relay for Blockchain Transmission Protocol"
 	cli.SetEnvKeyReplacer(rootVc, strings.NewReplacer(".", "_"))
 	//rootVc.Debug()
@@ -88,55 +89,31 @@ func main() {
 		return nil
 	}
 	rootPFlags := rootCmd.PersistentFlags()
-	rootPFlags.String("src.address", "", "BTP Address of source blockchain (PROTOCOL://NID.BLOCKCHAIN/BMC)")
-	rootPFlags.String("src.endpoint", "", "Endpoint of source blockchain")
-	rootPFlags.StringToString("src.options", nil, "Options, comma-separated 'key=value'")
-	rootPFlags.String("src.key_store", "", "Source keyStore")
-	rootPFlags.String("src.key_password", "", "Source password of keyStore")
-	rootPFlags.String("src.key_secret", "", "Source Secret(password) file for keyStore")
-	rootPFlags.String("src.relay_mode", "trustless", "Relay Mode")
-	rootPFlags.Bool("src.latest_result", false, "Sends relay messages regardless of final status reception.")
-	rootPFlags.Bool("src.filled_block_update", false, "Create relayMessage for all data received from the source network")
 
-	rootPFlags.String("dst.address", "", "BTP Address of destination blockchain (PROTOCOL://NID.BLOCKCHAIN/BMC)")
-	rootPFlags.String("dst.endpoint", "", "Endpoint of destination blockchain")
-	rootPFlags.StringToString("dst.options", nil, "Options, comma-separated 'key=value'")
-	rootPFlags.String("dst.key_store", "", "Destination keyStore")
-	rootPFlags.String("dst.key_password", "", "Destination password of keyStore")
-	rootPFlags.String("dst.key_secret", "", "Destination Secret(password) file for keyStore")
-	rootPFlags.String("dst.relay_mode", "trustless", "Relay Mode")
-	rootPFlags.Bool("dst.latest_result", false, "Sends relay messages regardless of final status reception.")
-	rootPFlags.Bool("dst.filled_block_update", false, "Create relayMessage for all data received from the source network")
-
-	rootPFlags.String("direction", "both", "relay network direction ( both, front, reverse)")
-	rootPFlags.Bool("maxSizeTx", false, "Send when the maximum transaction size is reached")
-
-	rootPFlags.Int64("offset", 0, "Offset of MTA")
-
-	//
-	rootPFlags.String("base_dir", "", "Base directory for data")
 	rootPFlags.StringP("config", "c", "", "Parsing configuration file")
-	//
-	rootPFlags.String("log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")
-	rootPFlags.String("console_level", "trace", "Console log level (trace,debug,info,warn,error,fatal,panic)")
-	//
-	rootPFlags.String("log_forwarder.vendor", "", "LogForwarder vendor (fluentd,logstash)")
-	rootPFlags.String("log_forwarder.address", "", "LogForwarder address")
-	rootPFlags.String("log_forwarder.level", "info", "LogForwarder level")
-	rootPFlags.String("log_forwarder.name", "", "LogForwarder name")
-	rootPFlags.StringToString("log_forwarder.options", nil, "LogForwarder options, comma-separated 'key=value'")
-	//
-	rootPFlags.String("log_writer.filename", "", "Log file name (rotated files resides in same directory)")
-	rootPFlags.Int("log_writer.maxsize", 100, "Maximum log file size in MiB")
-	rootPFlags.Int("log_writer.maxage", 0, "Maximum age of log file in day")
-	rootPFlags.Int("log_writer.maxbackups", 0, "Maximum number of backups")
-	rootPFlags.Bool("log_writer.localtime", false, "Use localtime on rotated log file instead of UTC")
-	rootPFlags.Bool("log_writer.compress", false, "Use gzip on rotated log file")
+
+	//Chains Config
+	rootPFlags.StringToString("chains_config.src", nil, "Source chain config")
+	rootPFlags.StringToString("chains_config.dst", nil, "Destination chain config")
+
+	//RelayConfig
+	rootPFlags.String("relay_config.direction", "both", "relay network direction ( both, front, reverse)")
+	rootPFlags.String("relay_config.base_dir", "", "Base directory for data")
+	rootPFlags.String("relay_config.log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")
+	rootPFlags.String("relay_config.console_level", "trace", "Console log level (trace,debug,info,warn,error,fatal,panic)")
+	rootPFlags.String("relay_config.log_forwarder.vendor", "", "LogForwarder vendor (fluentd,logstash)")
+	rootPFlags.String("relay_config.log_forwarder.address", "", "LogForwarder address")
+	rootPFlags.String("relay_config.log_forwarder.level", "info", "LogForwarder level")
+	rootPFlags.String("relay_config.log_forwarder.name", "", "LogForwarder name")
+	rootPFlags.StringToString("relay_config.log_forwarder.options", nil, "LogForwarder options, comma-separated 'key=value'")
+	rootPFlags.String("relay_config.log_writer.filename", "", "Log file name (rotated files resides in same directory)")
+	rootPFlags.Int("relay_config.log_writer.maxsize", 100, "Maximum log file size in MiB")
+	rootPFlags.Int("relay_config.log_writer.maxage", 0, "Maximum age of log file in day")
+	rootPFlags.Int("relay_config.log_writer.maxbackups", 0, "Maximum number of backups")
+	rootPFlags.Bool("relay_config.log_writer.localtime", false, "Use localtime on rotated log file instead of UTC")
+	rootPFlags.Bool("relay_config.log_writer.compress", false, "Use gzip on rotated log file")
 	cli.BindPFlags(rootVc, rootPFlags)
-	err := cli.MarkAnnotationCustom(rootPFlags, "src.address", "dst.address", "src.endpoint", "dst.endpoint")
-	if err != nil {
-		return
-	}
+
 	saveCmd := &cobra.Command{
 		Use:   "save [file]",
 		Short: "Save configuration",
@@ -154,17 +131,6 @@ func main() {
 				return err
 			}
 			cmd.Println("Save configuration to", saveFilePath)
-			if saveSrcKeyStore, _ := cmd.Flags().GetString("save_src_key_store"); saveSrcKeyStore != "" {
-				if err := cli.JsonPrettySaveFile(saveSrcKeyStore, 0600, cfg.Src.KeyStoreData); err != nil {
-					return err
-				}
-			}
-
-			if saveDstKeyStore, _ := cmd.Flags().GetString("save_dst_key_store"); saveDstKeyStore != "" {
-				if err := cli.JsonPrettySaveFile(saveDstKeyStore, 0600, cfg.Dst.KeyStoreData); err != nil {
-					return err
-				}
-			}
 			return nil
 		},
 	}
@@ -186,12 +152,12 @@ func main() {
 
 			modLevels, _ := cmd.Flags().GetStringToString("mod_level")
 
-			lf, err := linkfactory.NewLinkFactory(cfg, modLevels)
+			relay, err := relay.NewRelay(cfg, modLevels)
 			if err != nil {
 				return err
 			}
-			
-			return lf.Start()
+
+			return relay.Start()
 		},
 	}
 	rootCmd.AddCommand(startCmd)

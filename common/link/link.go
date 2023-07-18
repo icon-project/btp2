@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/icon-project/btp2/chain"
 	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
@@ -20,7 +19,6 @@ const (
 type relayMessage struct {
 	id            string
 	bls           *types.BMCLinkStatus
-	bpHeight      int64
 	message       []byte
 	rmis          []RelayMessageItem
 	sendingStatus bool
@@ -42,10 +40,6 @@ func (r *relayMessage) BMCLinkStatus() *types.BMCLinkStatus {
 	return r.bls
 }
 
-func (r *relayMessage) BpHeight() int64 {
-	return r.bpHeight
-}
-
 func (r *relayMessage) RelayMessageItems() []RelayMessageItem {
 	return r.rmis
 }
@@ -65,14 +59,15 @@ type Link struct {
 	rss        []ReceiveStatus
 	rmi        *relayMessageItem
 	limitSize  int64
-	srcCfg     chain.BaseConfig
-	dstCfg     chain.BaseConfig
+	srcCfg     ChainConfig
+	dstCfg     ChainConfig
 	bls        *types.BMCLinkStatus
 	blsChannel chan *types.BMCLinkStatus
 	relayState RelayState
+	p          types.Preference
 }
 
-func NewLink(srcCfg, dstCfg chain.BaseConfig, r Receiver, l log.Logger) types.Link {
+func NewLink(srcCfg, dstCfg ChainConfig, r Receiver, l log.Logger) types.Link {
 	link := &Link{
 		l:      l,
 		srcCfg: srcCfg,
@@ -93,6 +88,8 @@ func NewLink(srcCfg, dstCfg chain.BaseConfig, r Receiver, l log.Logger) types.Li
 
 func (l *Link) Start(sender types.Sender) error {
 	l.s = sender
+	l.p = sender.GetPreference()
+
 	errCh := make(chan error)
 	if err := l.senderChannel(errCh); err != nil {
 		return err
@@ -172,7 +169,7 @@ func (l *Link) receiverChannel(errCh chan error) error {
 }
 
 func (l *Link) senderChannel(errCh chan error) error {
-	l.limitSize = int64(l.s.TxSizeLimit()) - l.s.GetMarginForLimit()
+	l.limitSize = l.p.TxSizeLimit - l.p.MarginForLimit
 	rcc, err := l.s.Start()
 	if err != nil {
 		return err
@@ -218,7 +215,7 @@ func (l *Link) buildRelayMessage() error {
 			}
 
 			if mpLen == 0 {
-				if l.srcCfg.FilledBlockUpdate == true {
+				if l.p.FilledBlockUpdate == true {
 					if l.isOverLimit(l.rmi.size) {
 						if err = l.appendRelayMessage(); err != nil {
 							return err
@@ -268,11 +265,10 @@ func (l *Link) appendRelayMessage() error {
 		}
 
 		rm := &relayMessage{
-			id:       l.srcCfg.Address.NetworkID() + "_" + strconv.FormatInt(l.bls.Verifier.Height, 16) + "_" + strconv.FormatInt(l.bls.RxSeq, 16),
-			bls:      &types.BMCLinkStatus{},
-			bpHeight: l.r.GetHeightForSeq(l.bls.RxSeq),
-			message:  m,
-			rmis:     rmi,
+			id:      l.srcCfg.GetNetworkID() + "_" + strconv.FormatInt(l.bls.Verifier.Height, 16) + "_" + strconv.FormatInt(l.bls.RxSeq, 16),
+			bls:     &types.BMCLinkStatus{},
+			message: m,
+			rmis:    rmi,
 		}
 
 		rm.bls.TxSeq = l.bls.TxSeq
@@ -492,7 +488,7 @@ func (l *Link) updateBlockProof(id string) error {
 }
 
 func (l *Link) isOverLimit(size int64) bool {
-	if int64(l.s.TxSizeLimit()) < size {
+	if l.p.TxSizeLimit < size {
 		return true
 	}
 	return false
@@ -531,7 +527,7 @@ func (l *Link) result(rr *types.RelayResult) error {
 	if rm != nil {
 		switch rr.Err {
 		case errors.SUCCESS:
-			if l.dstCfg.LatestResult == true {
+			if l.p.LatestResult == true {
 				l.successRelayMessage(rr.Id)
 			} else {
 				if rr.Finalized == true {
