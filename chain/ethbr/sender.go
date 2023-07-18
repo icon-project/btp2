@@ -26,6 +26,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
+	"github.com/icon-project/btp2/chain"
+	"github.com/icon-project/btp2/common/link"
 	btpTypes "github.com/icon-project/btp2/common/types"
 
 	"github.com/icon-project/btp2/chain/ethbr/binding"
@@ -43,7 +45,7 @@ const (
 )
 
 var (
-	txSizeLimit = int(math.Ceil(txMaxDataSize / (1 + txOverheadScale)))
+	txSizeLimit = int(math.Ceil(txMaxDataSize / (1 + txOverheadScale))) //TODO xcall의 2k 사이즈에 맞게 다시 설정한다.
 )
 
 type Queue struct {
@@ -90,12 +92,12 @@ func (q *Queue) len() int {
 }
 
 type sender struct {
-	c   *client.Client
-	src btpTypes.BtpAddress
-	dst btpTypes.BtpAddress
-	w   btpTypes.Wallet
-	l   log.Logger
-	opt struct {
+	c       *client.Client
+	srcAddr btpTypes.BtpAddress
+	dstCfg  chain.BaseConfig
+	w       btpTypes.Wallet
+	l       log.Logger
+	opt     struct {
 	}
 	bmc                *binding.BMC
 	rr                 chan *btpTypes.RelayResult
@@ -103,14 +105,14 @@ type sender struct {
 	queue              *Queue
 }
 
-func newSender(src, dst btpTypes.BtpAddress, w btpTypes.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
+func newSender(srcAddr btpTypes.BtpAddress, dstCfg link.ChainConfig, w btpTypes.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
 	s := &sender{
-		src:   src,
-		dst:   dst,
-		w:     w,
-		l:     l,
-		rr:    make(chan *btpTypes.RelayResult),
-		queue: NewQueue(),
+		srcAddr: srcAddr,
+		dstCfg:  dstCfg.(chain.BaseConfig),
+		w:       w,
+		l:       l,
+		rr:      make(chan *btpTypes.RelayResult),
+		queue:   NewQueue(),
 	}
 
 	b, err := json.Marshal(opt)
@@ -123,7 +125,7 @@ func newSender(src, dst btpTypes.BtpAddress, w btpTypes.Wallet, endpoint string,
 
 	s.c = client.NewClient(endpoint, l)
 
-	s.bmc, _ = binding.NewBMC(client.HexToAddress(s.dst.ContractAddress()), s.c.GetEthClient())
+	s.bmc, _ = binding.NewBMC(client.HexToAddress(s.dstCfg.Address.ContractAddress()), s.c.GetEthClient())
 
 	return s
 }
@@ -137,7 +139,7 @@ func (s *sender) Stop() {
 }
 func (s *sender) GetStatus() (*btpTypes.BMCLinkStatus, error) {
 	var status binding.TypesLinkStatus
-	status, err := s.bmc.GetStatus(nil, s.src.String())
+	status, err := s.bmc.GetStatus(nil, s.srcAddr.String())
 	if err != nil {
 		s.l.Errorf("Error retrieving relay status from BMC")
 		return nil, err
@@ -150,10 +152,6 @@ func (s *sender) GetStatus() (*btpTypes.BMCLinkStatus, error) {
 	ls.Verifier.Extra = status.Verifier.Extra
 
 	return ls, nil
-}
-
-func (s *sender) GetMarginForLimit() int64 {
-	return 0
 }
 
 func (s *sender) Relay(rm btpTypes.RelayMessage) (string, error) {
@@ -234,8 +232,16 @@ func (s *sender) GetResult(txh *client.TransactionHashParam) (*types.Receipt, er
 	}
 }
 
-func (s *sender) TxSizeLimit() int {
-	return txSizeLimit
+// TODO config setting
+func (s *sender) GetPreference() btpTypes.Preference {
+	p := btpTypes.Preference{
+		TxSizeLimit:       int64(txSizeLimit),
+		MarginForLimit:    int64(0),
+		LatestResult:      false,
+		FilledBlockUpdate: false,
+	}
+
+	return p
 }
 
 func (s *sender) _relay(rm btpTypes.RelayMessage) (*client.TransactionHashParam, error) {
@@ -247,7 +253,7 @@ func (s *sender) _relay(rm btpTypes.RelayMessage) (*client.TransactionHashParam,
 
 	var tx *types.Transaction
 
-	tx, err = s.bmc.HandleRelayMessage(t, s.src.String(), rm.Bytes()[:])
+	tx, err = s.bmc.HandleRelayMessage(t, s.srcAddr.String(), rm.Bytes()[:])
 	if err != nil {
 		s.l.Errorf("handleRelayMessage error: %s, rm id:%s ", err.Error(), rm.Id())
 		return nil, err
