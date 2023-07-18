@@ -10,11 +10,10 @@ import (
 )
 
 type Factory struct {
-	CreateChainConfig func() map[string]interface{}
-	GetChainConfig    func(dict map[string]interface{}) (ChainConfig, error)
-	CheckConfig       func(cfg ChainConfig) bool
-	NewReceiver       func(srcCfg, dstCfg ChainConfig, fileCfg config.FileConfig, l log.Logger) (Receiver, error)
-	NewSender         func(srcCfg, dstCfg ChainConfig, l log.Logger) (types.Sender, error)
+	GetChainConfig func(dict map[string]interface{}) (ChainConfig, error)
+	CheckConfig    func(cfg ChainConfig) bool
+	NewReceiver    func(srcCfg, dstCfg ChainConfig, fileCfg config.FileConfig, l log.Logger) (Receiver, error)
+	NewSender      func(srcCfg, dstCfg ChainConfig, l log.Logger) (types.Sender, error)
 }
 
 var factories []*Factory
@@ -25,8 +24,7 @@ func RegisterFactory(f *Factory) {
 	}
 }
 
-// TODO rename / new go file??
-func NewLinkFactory(srcCfg, dstCfg map[string]interface{}, relayCfg RelayConfig, modLevels map[string]string) (types.Link, types.Sender, error) {
+func ComposeLink(srcCfg, dstCfg map[string]interface{}, relayCfg RelayConfig, modLevels map[string]string) (types.Link, types.Sender, error) {
 	var err error
 
 	var srcChainCfg ChainConfig
@@ -48,8 +46,7 @@ func NewLinkFactory(srcCfg, dstCfg map[string]interface{}, relayCfg RelayConfig,
 	}
 
 	if srcChainCfg == nil {
-		//TODO error message
-		return nil, nil, fmt.Errorf("")
+		return nil, nil, fmt.Errorf("not supported source chain")
 	}
 
 	//Sender
@@ -65,8 +62,7 @@ func NewLinkFactory(srcCfg, dstCfg map[string]interface{}, relayCfg RelayConfig,
 	}
 
 	if dstChainCfg == nil {
-		//TODO error message
-		return nil, nil, fmt.Errorf("")
+		return nil, nil, fmt.Errorf("not supported destination chain")
 	}
 
 	logger := setLogger(srcChainCfg, relayCfg, modLevels)

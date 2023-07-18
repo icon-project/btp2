@@ -232,7 +232,6 @@ func (s *sender) GetResult(txh *client.TransactionHashParam) (*types.Receipt, er
 	}
 }
 
-// TODO config setting
 func (s *sender) GetPreference() btpTypes.Preference {
 	p := btpTypes.Preference{
 		TxSizeLimit:       int64(txSizeLimit),

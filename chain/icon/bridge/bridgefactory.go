@@ -2,7 +2,6 @@ package bridge
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/icon-project/btp2/chain"
@@ -60,7 +59,6 @@ func NewReceiver(srcCfg, dstCfg link.ChainConfig, fileCfg config.FileConfig, l l
 func NewSender(srcCfg, dstCfg link.ChainConfig, l log.Logger) (types.Sender, error) {
 	dst := dstCfg.(chain.BaseConfig)
 
-	//TODO refactoring
 	w, err := newWallet(dst.KeyStorePass, dst.KeySecret, dst.KeyStoreData)
 	if err != nil {
 		return nil, err
@@ -83,9 +81,6 @@ func resolvePassword(keySecret, keyStorePass string) ([]byte, error) {
 	} else {
 		if keyStorePass != "" {
 			return []byte(keyStorePass), nil
-		} else {
-			//TODO add error message
-			return nil, fmt.Errorf("")
 		}
 	}
 }

@@ -430,7 +430,7 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 
 func (b *btp2) GetReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range b.rss {
-		if rs.Seq() <= seq && seq <= rs.Seq() { //TODO
+		if rs.Seq() <= seq && seq <= rs.Seq() {
 			return rs
 		}
 	}

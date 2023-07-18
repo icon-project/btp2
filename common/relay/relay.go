@@ -19,7 +19,6 @@ type Relay struct {
 	lfs []linkFactory
 }
 
-// TODO rename / new go file??
 func NewRelay(cfg *link.Config, modLevels map[string]string) (*Relay, error) {
 
 	r := &Relay{
@@ -27,25 +26,25 @@ func NewRelay(cfg *link.Config, modLevels map[string]string) (*Relay, error) {
 	}
 	switch cfg.Direction {
 	case FrontDirection:
-		l, s, err := link.NewLinkFactory(cfg.Src, cfg.Dst, cfg.RelayConfig, modLevels)
+		l, s, err := link.ComposeLink(cfg.Src, cfg.Dst, cfg.RelayConfig, modLevels)
 		if err != nil {
 			return nil, err
 		}
 		r.lfs = append(r.lfs, linkFactory{link: l, sender: s})
 	case ReverseDirection:
-		l, s, err := link.NewLinkFactory(cfg.Dst, cfg.Src, cfg.RelayConfig, modLevels)
+		l, s, err := link.ComposeLink(cfg.Dst, cfg.Src, cfg.RelayConfig, modLevels)
 		if err != nil {
 			return nil, err
 		}
 		r.lfs = append(r.lfs, linkFactory{link: l, sender: s})
 	case BothDirection:
-		frontL, frontS, err := link.NewLinkFactory(cfg.Src, cfg.Dst, cfg.RelayConfig, modLevels)
+		frontL, frontS, err := link.ComposeLink(cfg.Src, cfg.Dst, cfg.RelayConfig, modLevels)
 		if err != nil {
 			return nil, err
 		}
 		r.lfs = append(r.lfs, linkFactory{link: frontL, sender: frontS})
 
-		reverseL, reverseS, err := link.NewLinkFactory(cfg.Dst, cfg.Src, cfg.RelayConfig, modLevels)
+		reverseL, reverseS, err := link.ComposeLink(cfg.Dst, cfg.Src, cfg.RelayConfig, modLevels)
 		if err != nil {
 			return nil, err
 		}

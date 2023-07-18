@@ -110,10 +110,6 @@ func NewMessageProof(bs *types.BMCLinkStatus, startSeq, lastSeq int64, rps []*cl
 			continue
 		}
 		numOfEvents += len(rp.Events)
-		//if b, err = codec.RLP.MarshalToBytes(rp.Events); err != nil {
-		//	return nil, err
-		//}
-		//TODO refactoring
 		if b, err = rlp.EncodeToBytes(rp.Events); err != nil {
 			return nil, err
 		}

@@ -211,7 +211,6 @@ func (s *sender) result(id string, txh *client.TransactionHashParam) {
 	}
 }
 
-// TODO config setting
 func (s *sender) GetPreference() types.Preference {
 	p := types.Preference{
 		TxSizeLimit:       int64(txSizeLimit),
