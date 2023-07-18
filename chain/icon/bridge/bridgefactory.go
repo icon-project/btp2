@@ -83,4 +83,5 @@ func resolvePassword(keySecret, keyStorePass string) ([]byte, error) {
 			return []byte(keyStorePass), nil
 		}
 	}
+	return nil, nil
 }
