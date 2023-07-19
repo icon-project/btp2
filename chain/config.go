@@ -26,7 +26,7 @@ type BaseConfig struct {
 	Address      types.BtpAddress `json:"address"`
 	Endpoint     string           `json:"endpoint"`
 	KeyStoreData json.RawMessage  `json:"key_store"`
-	ChainId      string           `json:"chain_id"`
+	Mode         string           `json:"mode"`
 	KeyStorePass string           `json:"key_password,omitempty"`
 	KeySecret    string           `json:"key_secret,omitempty"`
 
@@ -37,8 +37,8 @@ func (b BaseConfig) GetAddress() types.BtpAddress {
 	return b.Address
 }
 
-func (b BaseConfig) GetChainId() string {
-	return b.ChainId
+func (b BaseConfig) GetMode() string {
+	return b.Mode
 }
 
 func (b BaseConfig) GetNetworkID() string {

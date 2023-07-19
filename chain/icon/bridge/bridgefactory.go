@@ -13,13 +13,27 @@ import (
 	"github.com/icon-project/btp2/common/wallet"
 )
 
+const MODE = "bridge"
+
+var supportBlockChain = []string{"icon", "havah"}
+
 func RegisterIconBridge() {
 	link.RegisterFactory(&link.Factory{
-		GetChainConfig: GetChainConfig,
-		CheckConfig:    CheckConfig,
-		NewReceiver:    NewReceiver,
-		NewSender:      NewSender,
+		GetSupportChain: GetSupportChain,
+		GetMode:         GetMode,
+		GetChainConfig:  GetChainConfig,
+		CheckConfig:     CheckConfig,
+		NewReceiver:     NewReceiver,
+		NewSender:       NewSender,
 	})
+}
+
+func GetSupportChain() []string {
+	return supportBlockChain
+}
+
+func GetMode() string {
+	return MODE
 }
 
 func GetChainConfig(dict map[string]interface{}) (link.ChainConfig, error) {
@@ -38,15 +52,17 @@ func GetChainConfig(dict map[string]interface{}) (link.ChainConfig, error) {
 
 func CheckConfig(cfg link.ChainConfig) bool {
 	baseCfg, ok := cfg.(chain.BaseConfig)
-
 	if !ok {
 		return false
 	}
 
-	if baseCfg.ChainId == "icon_bridge" {
-		return true
+	for _, c := range supportBlockChain {
+		if c == baseCfg.Address.BlockChain() {
+			if baseCfg.Mode == MODE {
+				return true
+			}
+		}
 	}
-
 	return false
 }
 

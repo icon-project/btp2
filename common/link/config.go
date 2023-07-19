@@ -17,7 +17,7 @@ type RelayConfig struct {
 
 type ChainConfig interface {
 	GetAddress() types.BtpAddress
-	GetChainId() string
+	GetMode() string
 	GetNetworkID() string
 }
 

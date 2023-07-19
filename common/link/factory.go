@@ -3,6 +3,7 @@ package link
 import (
 	"fmt"
 	stdlog "log"
+	"sort"
 
 	"github.com/icon-project/btp2/common/config"
 	"github.com/icon-project/btp2/common/log"
@@ -10,6 +11,9 @@ import (
 )
 
 type Factory struct {
+	GetSupportChain func() []string
+	GetMode         func() string
+
 	GetChainConfig func(dict map[string]interface{}) (ChainConfig, error)
 	CheckConfig    func(cfg ChainConfig) bool
 	NewReceiver    func(srcCfg, dstCfg ChainConfig, fileCfg config.FileConfig, l log.Logger) (Receiver, error)
@@ -20,8 +24,29 @@ var factories []*Factory
 
 func RegisterFactory(f *Factory) {
 	if f != nil {
+		if checkDuplicates(f) {
+			return
+		}
 		factories = append(factories, f)
 	}
+}
+
+func checkDuplicates(f *Factory) bool {
+	for _, cf := range factories {
+		for _, cfChain := range cf.GetSupportChain() {
+			if contains(f.GetSupportChain(), cfChain) {
+				if cf.GetMode() == f.GetMode() {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func contains(s []string, e string) bool {
+	i := sort.SearchStrings(s, e)
+	return i < len(s) && s[i] == e
 }
 
 func ComposeLink(srcCfg, dstCfg map[string]interface{}, relayCfg RelayConfig, modLevels map[string]string) (types.Link, types.Sender, error) {
