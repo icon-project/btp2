@@ -41,6 +41,7 @@ const (
 	DefaultRelayReSendInterval    = time.Second
 	DefaultStepLimit              = 0x9502f900 //maxStepLimit(invoke), refer https://www.icondev.io/docs/step-estimation
 	MaxQueueSize                  = 100
+	TransactionResultRetryLimit   = 5
 )
 
 var (
@@ -320,13 +321,20 @@ SignLoop:
 }
 
 func (s *sender) GetResult(txh *client.TransactionHashParam) (*client.TransactionResult, error) {
+	var retry = TransactionResultRetryLimit
 	for {
 		txr, err := s.c.GetTransactionResult(txh)
 		if err != nil {
 			if je, ok := err.(*jsonrpc.Error); ok {
 				switch je.Code {
-				//TODO add notFound timeout
-				case client.JsonrpcErrorCodePending, client.JsonrpcErrorCodeExecuting, client.JsonrpcErrorCodeNotFound:
+				case client.JsonrpcErrorCodePending, client.JsonrpcErrorCodeExecuting:
+					<-time.After(DefaultGetRelayResultInterval)
+					continue
+				case client.JsonrpcErrorCodeNotFound:
+					if retry == 0 {
+						return nil, fmt.Errorf("not found transaction result ( TxHash : %v)", txh.Hash)
+					}
+					retry--
 					<-time.After(DefaultGetRelayResultInterval)
 					continue
 				}
