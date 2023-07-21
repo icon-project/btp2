@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/icon-project/btp2/common/cli"
-	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/relay"
 )
@@ -48,7 +47,7 @@ var logoLines = []string{
 
 func main() {
 	rootCmd, rootVc := cli.NewCommand(nil, nil, "relay", "BTP Relay CLI")
-	cfg := &link.Config{}
+	cfg := &relay.Config{}
 	rootCmd.Long = "Command Line Interface of Relay for Blockchain Transmission Protocol"
 	cli.SetEnvKeyReplacer(rootVc, strings.NewReplacer(".", "_"))
 	//rootVc.Debug()
@@ -93,8 +92,8 @@ func main() {
 	rootPFlags.StringP("config", "c", "", "Parsing configuration file")
 
 	//Chains Config
-	rootPFlags.StringToString("chains_config.src", nil, "Source chain config")
-	rootPFlags.StringToString("chains_config.dst", nil, "Destination chain config")
+	rootPFlags.String("chains_config.src", "", "Source chain config")
+	rootPFlags.String("chains_config.dst", "", "Destination chain config")
 
 	//RelayConfig
 	rootPFlags.String("relay_config.direction", "both", "relay network direction ( both, front, reverse)")

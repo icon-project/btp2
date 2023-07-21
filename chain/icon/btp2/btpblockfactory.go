@@ -6,40 +6,28 @@ import (
 
 	"github.com/icon-project/btp2/chain"
 	"github.com/icon-project/btp2/chain/icon"
-	"github.com/icon-project/btp2/common/config"
 	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
 	"github.com/icon-project/btp2/common/wallet"
 )
 
-const MODE = "btpBlock"
-
-var supportBlockChain = []string{"icon", "havah"}
+const TYPE = "icon-btpblock-java"
 
 func RegisterIconBtp2() {
 	link.RegisterFactory(&link.Factory{
-		GetSupportChain: GetSupportChain,
-		GetMode:         GetMode,
-		GetChainConfig:  GetChainConfig,
-		CheckConfig:     CheckConfig,
-		NewReceiver:     NewReceiver,
-		NewSender:       NewSender,
+		Type:             TYPE,
+		ParseChainConfig: ParseChainConfig,
+		NewLink:          NewLink,
+		NewReceiver:      NewReceiver,
+		NewSender:        NewSender,
 	})
 }
 
-func GetSupportChain() []string {
-	return supportBlockChain
-}
-
-func GetMode() string {
-	return MODE
-}
-
-func GetChainConfig(dict map[string]interface{}) (link.ChainConfig, error) {
+func ParseChainConfig(raw json.RawMessage) (link.ChainConfig, error) {
 	cfg := chain.BaseConfig{}
 
-	jsonbody, err := json.Marshal(dict)
+	jsonbody, err := json.Marshal(raw)
 	if err != nil {
 		return nil, err
 	}
@@ -47,32 +35,34 @@ func GetChainConfig(dict map[string]interface{}) (link.ChainConfig, error) {
 	if err := json.Unmarshal(jsonbody, &cfg); err != nil {
 		return nil, err
 	}
-	return cfg, nil
-}
 
-func CheckConfig(cfg link.ChainConfig) bool {
-	baseCfg, ok := cfg.(chain.BaseConfig)
-	if !ok {
-		return false
+	//TODO add check
+	if cfg.Type == TYPE {
+		return cfg, nil
 	}
 
-	for _, c := range supportBlockChain {
-		if c == baseCfg.Address.BlockChain() {
-			if baseCfg.Mode == MODE {
-				return true
-			}
-		}
-	}
-	return false
+	return nil, nil
 }
 
-func NewReceiver(srcCfg, dstCfg link.ChainConfig, fileCfg config.FileConfig, l log.Logger) (link.Receiver, error) {
+func NewLink(srcCfg link.ChainConfig, dstAddr types.BtpAddress, baseDir string, l log.Logger) (types.Link, error) {
 	src := srcCfg.(chain.BaseConfig)
 
-	return newBTP2(src, dstCfg.GetAddress(), src.Endpoint, fileCfg, l)
+	r, err := newBTP2(src, dstAddr, src.Endpoint, baseDir, l)
+	if err != nil {
+		return nil, err
+	}
+
+	link := link.NewLink(srcCfg, r, l)
+	return link, nil
 }
 
-func NewSender(srcCfg, dstCfg link.ChainConfig, l log.Logger) (types.Sender, error) {
+func NewReceiver(srcCfg link.ChainConfig, dstAddr types.BtpAddress, baseDir string, l log.Logger) (link.Receiver, error) {
+	src := srcCfg.(chain.BaseConfig)
+
+	return newBTP2(src, dstAddr, src.Endpoint, baseDir, l)
+}
+
+func NewSender(srcAddr types.BtpAddress, dstCfg link.ChainConfig, l log.Logger) (types.Sender, error) {
 	dst := dstCfg.(chain.BaseConfig)
 
 	w, err := newWallet(dst.KeyStorePass, dst.KeySecret, dst.KeyStoreData)
@@ -80,7 +70,7 @@ func NewSender(srcCfg, dstCfg link.ChainConfig, l log.Logger) (types.Sender, err
 		return nil, err
 	}
 
-	return icon.NewSender(srcCfg.GetAddress(), dst, w, dst.Endpoint, dst.Options, l), nil
+	return icon.NewSender(srcAddr, dst, w, dst.Endpoint, dst.Options, l), nil
 }
 
 func newWallet(passwd, secret string, keyStore json.RawMessage) (types.Wallet, error) {

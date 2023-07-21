@@ -1,23 +1,18 @@
 package link
 
 import (
-	"fmt"
-	stdlog "log"
-	"sort"
+	"encoding/json"
 
-	"github.com/icon-project/btp2/common/config"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
 )
 
 type Factory struct {
-	GetSupportChain func() []string
-	GetMode         func() string
-
-	GetChainConfig func(dict map[string]interface{}) (ChainConfig, error)
-	CheckConfig    func(cfg ChainConfig) bool
-	NewReceiver    func(srcCfg, dstCfg ChainConfig, fileCfg config.FileConfig, l log.Logger) (Receiver, error)
-	NewSender      func(srcCfg, dstCfg ChainConfig, l log.Logger) (types.Sender, error)
+	Type             string
+	ParseChainConfig func(raw json.RawMessage) (ChainConfig, error)
+	NewReceiver      func(srcCfg ChainConfig, dstAddr types.BtpAddress, baseDir string, l log.Logger) (Receiver, error)
+	NewLink          func(srcCfg ChainConfig, dstAddr types.BtpAddress, baseDir string, l log.Logger) (types.Link, error)
+	NewSender        func(srcAddr types.BtpAddress, dstCfg ChainConfig, l log.Logger) (types.Sender, error)
 }
 
 var factories []*Factory
@@ -25,7 +20,7 @@ var factories []*Factory
 func RegisterFactory(f *Factory) {
 	if f != nil {
 		if checkDuplicates(f) {
-			return
+			return //TODO err??
 		}
 		factories = append(factories, f)
 	}
@@ -33,144 +28,67 @@ func RegisterFactory(f *Factory) {
 
 func checkDuplicates(f *Factory) bool {
 	for _, cf := range factories {
-		for _, cfChain := range cf.GetSupportChain() {
-			if contains(f.GetSupportChain(), cfChain) {
-				if cf.GetMode() == f.GetMode() {
-					return true
-				}
-			}
+		if cf.Type == f.Type {
+			return true
 		}
 	}
 	return false
 }
 
-func contains(s []string, e string) bool {
-	i := sort.SearchStrings(s, e)
-	return i < len(s) && s[i] == e
-}
-
-func ComposeLink(srcCfg, dstCfg map[string]interface{}, relayCfg RelayConfig, modLevels map[string]string) (types.Link, types.Sender, error) {
-	var err error
-
-	var srcChainCfg ChainConfig
-	var dstChainCfg ChainConfig
-
-	var srcFactory *Factory
-	var dstFactory *Factory
-
-	//Receiver
-	for _, factory := range factories {
-		srcChainCfg, err = factory.GetChainConfig(srcCfg)
-		if err != nil {
-			return nil, nil, err
-		}
-		if factory.CheckConfig(srcChainCfg) {
-			srcFactory = factory
-			break
-		}
-	}
-
-	if srcChainCfg == nil {
-		return nil, nil, fmt.Errorf("not supported source chain")
-	}
+func CreateLink(srcRaw, dstRaw json.RawMessage, l log.Logger, baseDir string) (types.Link, error) {
 
 	//Sender
-	for _, factory := range factories {
-		dstChainCfg, err = factory.GetChainConfig(dstCfg)
+	var dstCfgCommon ChainConfigCommon
+	if err := json.Unmarshal(dstRaw, &dstCfgCommon); err != nil {
+		return nil, err
+	}
+
+	for _, f := range factories {
+		srcCfg, err := f.ParseChainConfig(srcRaw)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		if factory.CheckConfig(dstChainCfg) {
-			dstFactory = factory
-			break
+		if srcCfg != nil {
+			link, err := f.NewLink(srcCfg, dstCfgCommon.GetAddress(), baseDir, l)
+			if err != nil {
+				return nil, err
+			}
+
+			if link == nil {
+				receiver, err := f.NewReceiver(srcCfg, dstCfgCommon.GetAddress(), baseDir, l)
+				if err != nil {
+					return nil, err
+				}
+
+				link = NewLink(srcCfg, receiver, l)
+			}
+			return link, nil
 		}
 	}
 
-	if dstChainCfg == nil {
-		return nil, nil, fmt.Errorf("not supported destination chain")
-	}
-
-	logger := setLogger(srcChainCfg, relayCfg, modLevels)
-	logger.Debugln(relayCfg.FileConfig.FilePath, relayCfg.FileConfig.BaseDir)
-
-	//new receiver
-	r, err := srcFactory.NewReceiver(srcChainCfg, dstChainCfg, relayCfg.FileConfig, logger)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	//new sender
-	s, err := dstFactory.NewSender(srcChainCfg, dstChainCfg, logger)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	l := NewLink(srcChainCfg, dstChainCfg, r, logger)
-	return l, s, nil
+	return nil, nil
 }
 
-func Start(link types.Link, sender types.Sender, errCh chan error) error {
-	go func() {
-		err := link.Start(sender)
-		select {
-		case errCh <- err:
-		default:
+func CreateSender(srcRaw, dstRaw json.RawMessage, l log.Logger) (types.Sender, error) {
+	//Sender
+	var srcCfgCommon ChainConfigCommon
+	if err := json.Unmarshal(srcRaw, &srcCfgCommon); err != nil {
+		return nil, err
+	}
+
+	for _, f := range factories {
+		dstCfg, err := f.ParseChainConfig(dstRaw)
+		if err != nil {
+			return nil, err
 		}
-	}()
-
-	return nil
-}
-
-func setLogger(srcCfg ChainConfig, lc RelayConfig, modLevels map[string]string) log.Logger {
-	l := log.WithFields(log.Fields{log.FieldKeyChain: fmt.Sprintf("%s", srcCfg.GetNetworkID())})
-	log.SetGlobalLogger(l)
-	stdlog.SetOutput(l.WriterLevel(log.WarnLevel))
-	if lc.LogWriter != nil {
-		if lc.LogWriter.Filename == "" {
-			log.Debugln("LogWriterConfig filename is empty string, will be ignore")
-		} else {
-			var lwCfg log.WriterConfig
-			lwCfg = *lc.LogWriter
-			lwCfg.Filename = lc.ResolveAbsolute(lwCfg.Filename)
-			w, err := log.NewWriter(&lwCfg)
+		if dstCfg != nil {
+			s, err := f.NewSender(srcCfgCommon.GetAddress(), dstCfg, l)
 			if err != nil {
-				log.Panicf("Fail to make writer err=%+v", err)
+				return nil, err
 			}
-			err = l.SetFileWriter(w)
-			if err != nil {
-				log.Panicf("Fail to set file l err=%+v", err)
-			}
+			return s, nil
 		}
 	}
 
-	if lv, err := log.ParseLevel(lc.LogLevel); err != nil {
-		log.Panicf("Invalid log_level=%s", lc.LogLevel)
-	} else {
-		l.SetLevel(lv)
-	}
-	if lv, err := log.ParseLevel(lc.ConsoleLevel); err != nil {
-		log.Panicf("Invalid console_level=%s", lc.ConsoleLevel)
-	} else {
-		l.SetConsoleLevel(lv)
-	}
-
-	for mod, lvStr := range modLevels {
-		if lv, err := log.ParseLevel(lvStr); err != nil {
-			log.Panicf("Invalid mod_level mod=%s level=%s", mod, lvStr)
-		} else {
-			l.SetModuleLevel(mod, lv)
-		}
-	}
-
-	if lc.LogForwarder != nil {
-		if lc.LogForwarder.Vendor == "" && lc.LogForwarder.Address == "" {
-			log.Debugln("LogForwarderConfig vendor and address is empty string, will be ignore")
-		} else {
-			if err := log.AddForwarder(lc.LogForwarder); err != nil {
-				log.Fatalf("Invalid log_forwarder err:%+v", err)
-			}
-		}
-	}
-
-	return l
+	return nil, nil
 }

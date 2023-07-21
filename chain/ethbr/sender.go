@@ -45,7 +45,7 @@ const (
 )
 
 var (
-	txSizeLimit = int(math.Ceil(txMaxDataSize / (1 + txOverheadScale))) //TODO xcall의 2k 사이즈에 맞게 다시 설정한다.
+	txSizeLimit = int(math.Ceil(txMaxDataSize / (1 + txOverheadScale)))
 )
 
 type Queue struct {

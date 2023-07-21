@@ -11,7 +11,6 @@ import (
 
 	"github.com/icon-project/btp2/chain/icon/client"
 	"github.com/icon-project/btp2/common/codec"
-	"github.com/icon-project/btp2/common/config"
 	"github.com/icon-project/btp2/common/db"
 	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/intconv"
@@ -62,7 +61,7 @@ type btp2 struct {
 	startHeight   int64
 }
 
-func newBTP2(src link.ChainConfig, dst types.BtpAddress, endpoint string, fileCfg config.FileConfig, l log.Logger) (*btp2, error) {
+func newBTP2(src link.ChainConfig, dst types.BtpAddress, endpoint string, baseDir string, l log.Logger) (*btp2, error) {
 	c := &btp2{
 		src: src,
 		dst: dst,
@@ -72,7 +71,7 @@ func newBTP2(src link.ChainConfig, dst types.BtpAddress, endpoint string, fileCf
 		rs:  &receiveStatus{},
 	}
 	c.c = client.NewClient(endpoint, l)
-	bk, err := c.prepareDatabase(fileCfg)
+	bk, err := c.prepareDatabase(baseDir)
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +84,9 @@ func (b *btp2) setHeightToDatabase() {
 	b.bk.Set([]byte("ReceiveHeight"), bytesArray)
 }
 
-func (b *btp2) prepareDatabase(fileCfg config.FileConfig) (db.Bucket, error) {
-	b.l.Debugln("open database", filepath.Join(fileCfg.AbsBaseDir()+b.src.GetNetworkID(), b.dst.NetworkAddress()))
-	database, err := db.Open(fileCfg.AbsBaseDir()+b.src.GetNetworkID(), string(DefaultDBType), b.dst.NetworkAddress())
+func (b *btp2) prepareDatabase(baseDir string) (db.Bucket, error) {
+	b.l.Debugln("open database", filepath.Join(baseDir+b.src.GetAddress().NetworkID(), b.dst.NetworkAddress()))
+	database, err := db.Open(baseDir+b.src.GetAddress().NetworkID(), string(DefaultDBType), b.dst.NetworkAddress())
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to open database")
 	}

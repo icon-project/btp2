@@ -73,7 +73,7 @@ func newReceiveStatus(height, rxSeq int64, sn int64, msgs []string, next types.B
 	}, nil
 }
 
-func newBridge(src link.ChainConfig, dst types.BtpAddress, endpoint string, l log.Logger) (*bridge, error) {
+func newBridge(src link.ChainConfig, dst types.BtpAddress, endpoint string, baseDir string, l log.Logger) (*bridge, error) {
 	c := &bridge{
 		src: src,
 		dst: dst,

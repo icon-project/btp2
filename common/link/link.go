@@ -60,18 +60,16 @@ type Link struct {
 	rmi        *relayMessageItem
 	limitSize  int64
 	srcCfg     ChainConfig
-	dstCfg     ChainConfig
 	bls        *types.BMCLinkStatus
 	blsChannel chan *types.BMCLinkStatus
 	relayState RelayState
 	p          types.Preference
 }
 
-func NewLink(srcCfg, dstCfg ChainConfig, r Receiver, l log.Logger) types.Link {
+func NewLink(srcCfg ChainConfig, r Receiver, l log.Logger) types.Link {
 	link := &Link{
 		l:      l,
 		srcCfg: srcCfg,
-		dstCfg: dstCfg,
 		r:      r,
 		rms:    make([]*relayMessage, 0),
 		rss:    make([]ReceiveStatus, 0),
@@ -91,7 +89,7 @@ func (l *Link) Start(sender types.Sender) error {
 	l.p = sender.GetPreference()
 
 	errCh := make(chan error)
-	if err := l.senderChannel(errCh); err != nil {
+	if err := l.startSenderChannel(errCh); err != nil {
 		return err
 	}
 
@@ -102,7 +100,7 @@ func (l *Link) Start(sender types.Sender) error {
 
 	l.bls = bls
 
-	if err := l.receiverChannel(errCh); err != nil {
+	if err := l.startReceiverChannel(errCh); err != nil {
 		return err
 	}
 
@@ -124,7 +122,7 @@ func (l *Link) Stop() {
 	l.r.Stop()
 }
 
-func (l *Link) receiverChannel(errCh chan error) error {
+func (l *Link) startReceiverChannel(errCh chan error) error {
 	once := new(sync.Once)
 	rc, err := l.r.Start(l.bls)
 	if err != nil {
@@ -143,14 +141,14 @@ func (l *Link) receiverChannel(errCh chan error) error {
 							errCh <- err
 						}
 
-						if err = l.HandleRelayMessage(); err != nil {
+						if err = l.handleRelayMessage(); err != nil {
 							errCh <- err
 						}
 						l.relayState = PENDING
 					})
 
 					if l.bls.Verifier.Height < rs.Height() {
-						if err = l.HandleRelayMessage(); err != nil {
+						if err = l.handleRelayMessage(); err != nil {
 							errCh <- err
 						}
 					}
@@ -168,7 +166,7 @@ func (l *Link) receiverChannel(errCh chan error) error {
 	return nil
 }
 
-func (l *Link) senderChannel(errCh chan error) error {
+func (l *Link) startSenderChannel(errCh chan error) error {
 	l.limitSize = l.p.TxSizeLimit - l.p.MarginForLimit
 	rcc, err := l.s.Start()
 	if err != nil {
@@ -265,7 +263,7 @@ func (l *Link) appendRelayMessage() error {
 		}
 
 		rm := &relayMessage{
-			id:      l.srcCfg.GetNetworkID() + "_" + strconv.FormatInt(l.bls.Verifier.Height, 16) + "_" + strconv.FormatInt(l.bls.RxSeq, 16),
+			id:      l.srcCfg.GetAddress().NetworkID() + "_" + strconv.FormatInt(l.bls.Verifier.Height, 16) + "_" + strconv.FormatInt(l.bls.RxSeq, 16),
 			bls:     &types.BMCLinkStatus{},
 			message: m,
 			rmis:    rmi,
@@ -286,7 +284,7 @@ func (l *Link) appendRelayMessage() error {
 	return nil
 }
 
-func (l *Link) HandleRelayMessage() error {
+func (l *Link) handleRelayMessage() error {
 	l.rmsMtx.Lock()
 	defer l.rmsMtx.Unlock()
 	if l.relayState == RUNNING {
@@ -506,7 +504,7 @@ func (l *Link) successRelayMessage(id string) error {
 
 	l.relayState = RUNNING
 
-	if err := l.HandleRelayMessage(); err != nil {
+	if err := l.handleRelayMessage(); err != nil {
 		return err
 	}
 	l.blsChannel <- rm.BMCLinkStatus()
@@ -543,7 +541,7 @@ func (l *Link) result(rr *types.RelayResult) error {
 				l.updateBMCLinkStatus()
 				l.removeAllRelayMessage()
 				l.relayState = RUNNING
-				l.HandleRelayMessage()
+				l.handleRelayMessage()
 			}
 		case errors.BMVAlreadyVerified:
 			if rr.Finalized != true {
@@ -556,7 +554,7 @@ func (l *Link) result(rr *types.RelayResult) error {
 					l.removeAllRelayMessage()
 				} else {
 					if l.rms[index].sendingStatus == false {
-						if err := l.HandleRelayMessage(); err != nil {
+						if err := l.handleRelayMessage(); err != nil {
 							return err
 						}
 					}

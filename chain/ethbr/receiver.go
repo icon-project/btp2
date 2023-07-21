@@ -20,7 +20,6 @@ import (
 	"github.com/icon-project/btp2/chain/ethbr/binding"
 	"github.com/icon-project/btp2/chain/ethbr/client"
 	"github.com/icon-project/btp2/common/codec"
-	"github.com/icon-project/btp2/common/config"
 	"github.com/icon-project/btp2/common/db"
 	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/link"
@@ -88,7 +87,7 @@ type ethbr struct {
 }
 
 func newEthBridge(src link.ChainConfig, dst btpTypes.BtpAddress, endpoint string,
-	l log.Logger, fileCfg config.FileConfig, opt map[string]interface{}) (*ethbr, error) {
+	l log.Logger, baseDir string, opt map[string]interface{}) (*ethbr, error) {
 	c := &ethbr{
 		src: src,
 		dst: dst,
@@ -107,7 +106,7 @@ func newEthBridge(src link.ChainConfig, dst btpTypes.BtpAddress, endpoint string
 		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
 	}
 
-	bk, err := c.prepareDatabase(fileCfg)
+	bk, err := c.prepareDatabase(baseDir)
 	if err != nil {
 		return nil, err
 	}
@@ -120,9 +119,9 @@ func (e *ethbr) setHeightToDatabase() {
 	e.bk.Set([]byte("ReceiveHeight"), bytesArray)
 }
 
-func (e *ethbr) prepareDatabase(fileCfg config.FileConfig) (db.Bucket, error) {
-	e.l.Debugln("open database", filepath.Join(fileCfg.AbsBaseDir()+e.src.GetNetworkID(), e.dst.NetworkAddress()))
-	database, err := db.Open(fileCfg.AbsBaseDir()+e.src.GetNetworkID(), string(DefaultDBType), e.dst.NetworkAddress())
+func (e *ethbr) prepareDatabase(baseDir string) (db.Bucket, error) {
+	e.l.Debugln("open database", filepath.Join(baseDir+e.src.GetAddress().NetworkID(), e.dst.NetworkAddress()))
+	database, err := db.Open(baseDir+e.src.GetAddress().NetworkID(), string(DefaultDBType), e.dst.NetworkAddress())
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to open database")
 	}
