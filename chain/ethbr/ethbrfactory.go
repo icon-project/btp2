@@ -11,9 +11,9 @@ import (
 	"github.com/icon-project/btp2/common/wallet"
 )
 
-const TYPE = "bsc-bridge-solidity"
+const TYPE = "eth-bridge-solidity"
 
-func RegisterIconEthBr() {
+func RegisterEthBridge() {
 	link.RegisterFactory(&link.Factory{
 		Type:             TYPE,
 		ParseChainConfig: ParseChainConfig,
