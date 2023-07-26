@@ -10,7 +10,7 @@ start_chain() {
   done
   echo $RES
 
-  CID=acbc4e
+  CID=1d3ac1
   if [ ! -e ${GOLOOP_NODE_DIR}/${CID} ]; then
     # join chain
     GENESIS=/goloop/config/genesis.zip
