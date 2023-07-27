@@ -8,6 +8,8 @@ typechain-types
 # node data
 docker/icon/data
 docker/icon/logs
+docker/icon1/data
+docker/icon1/logs
 docker/hardhat/logs
 
 # deployments

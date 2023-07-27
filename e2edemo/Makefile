@@ -1,8 +1,12 @@
 PWD = $(abspath ./)
 
 JAVASCORE_PATH = $(PWD)/../javascore
-GRADLE = ./gradlew
+CHAIN_CONFIG = $(PWD)/chain_config.json
+TARGET_CHAINS = \
+        $(shell cat $(CHAIN_CONFIG) | jq -r .link.src) \
+        $(shell cat $(CHAIN_CONFIG) | jq -r .link.dst)
 
+GRADLE = ./gradlew
 HARDHAT = npx hardhat
 TS_NODE = npx ts-node
 NETWORK = --network localhost
@@ -82,7 +86,7 @@ deploy-all: deploy-bmc deploy-bmv deploy-xcall deploy-dapp
 start-nodes:
 	@ echo ">>> Start nodes" ; \
 	cd docker; \
-	docker compose up -d
+	docker compose up -d $(TARGET_CHAINS)
 
 stop-nodes:
 	@ echo ">>> Stop nodes" ; \
@@ -91,7 +95,7 @@ stop-nodes:
 
 setup-node:
 	@ echo ">>> Setup ICON node" ; \
-	$(TS_NODE) scripts/setup/setup_node.ts
+	$(TS_NODE) scripts/setup/setup_node.ts $(TARGET_CHAINS)
 
 run-demo:
 	@ echo ">>> Run demo_dapp.ts " ; \

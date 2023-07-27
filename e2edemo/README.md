@@ -122,9 +122,25 @@ You can now run the demo scenario script via the following command.
 make run-demo
 ```
 
-## Appendix
+## Appendices
 
-### Directory layout
+### A. Testing with two ICON chains
+
+The default chain configuration is for testing between ICON and Hardhat chains, but two ICON chains can be used if needed.
+
+The `link` object in [`chain_config.json`](./chain_config.json) file indicates a pair of chains to be used in src and dst.
+Thus you can start testing between two ICON chains if you change it with the following configuration
+before starting the `make start-nodes` step above.
+
+```
+  "link": {
+    "src": "icon0",
+    "dst": "icon1"
+  }
+```
+
+
+### B. Directory layout
 | Directory                       | Description                                      |
 |:--------------------------------|:-------------------------------------------------|
 | docker                          | Docker-related files for ICON and Hardhat chains |
