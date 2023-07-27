@@ -262,7 +262,7 @@ func (s *sender) newTransactionParam(method string, params interface{}) *client.
 		FromAddress: client.Address(s.w.Address()),
 		ToAddress:   client.Address(s.dstCfg.Address.Account()),
 		NetworkID:   client.HexInt(s.dstCfg.Address.NetworkID()),
-		StepLimit:   client.NewHexInt(s.opt.StepLimit), //TODO stepLimit estimate
+		StepLimit:   client.NewHexInt(s.opt.StepLimit),
 		DataType:    "call",
 		Data: &client.CallData{
 			Method: method,

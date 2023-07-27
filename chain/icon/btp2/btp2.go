@@ -162,7 +162,7 @@ func (b *btp2) Start(bls *types.BMCLinkStatus) (<-chan interface{}, error) {
 	}
 
 	go func() {
-		err := b.Monitoring(bls)
+		err := b.monitoring(bls)
 		b.l.Debugf("Unknown monitoring error occurred  (err : %v)", err)
 		b.rsc <- err
 	}()
@@ -179,7 +179,7 @@ func (b *btp2) GetStatus() (link.ReceiveStatus, error) {
 }
 
 func (b *btp2) GetHeightForSeq(seq int64) int64 {
-	rs := b.GetReceiveStatusForSequence(seq)
+	rs := b.getReceiveStatusForSequence(seq)
 	if rs != nil {
 		return rs.height
 	} else {
@@ -220,7 +220,7 @@ func (b *btp2) BuildBlockProof(bls *types.BMCLinkStatus, height int64) (link.Blo
 
 func (b *btp2) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.MessageProof, error) {
 	b.l.Debugf("Build BuildMessageProof (height:%d, rxSeq:%d)", bls.Verifier.Height, bls.RxSeq)
-	rs := b.GetReceiveStatusForHeight(bls.Verifier.Height)
+	rs := b.getReceiveStatusForHeight(bls.Verifier.Height)
 
 	if rs == nil {
 		return nil, nil
@@ -335,7 +335,7 @@ func (b *btp2) getMessage(height int64) (*mbt.MerkleBinaryTree, error) {
 	return mt, nil
 }
 
-func (b *btp2) Monitoring(bls *types.BMCLinkStatus) error {
+func (b *btp2) monitoring(bls *types.BMCLinkStatus) error {
 	var height int64
 
 	if bls.Verifier.Height < 1 {
@@ -363,11 +363,11 @@ func (b *btp2) Monitoring(bls *types.BMCLinkStatus) error {
 		ls.RxSeq = b.rs.Seq()
 		ls.Verifier.Height = b.rs.Height()
 		b.l.Debugf("Restart Monitoring")
-		b.Monitoring(ls)
+		b.monitoring(ls)
 	}
 	onConn := func(conn *websocket.Conn) {
 		b.l.Debugf("ReceiveLoop monitorBTP2Block height:%d seq:%d networkId:%d connected %s",
-			bls.Verifier.Height, bls.RxSeq, b.nid, conn.LocalAddr().String())
+			height, bls.RxSeq, b.nid, conn.LocalAddr().String())
 	}
 
 	err := b.monitorBTP2Block(req, bls, onConn, onErr)
@@ -402,6 +402,9 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 		if v.Progress.Value != 0 {
 			b.receiveHeight = v.Progress.Value
 			b.setHeightToDatabase()
+		}
+
+		if len(v.Header) == 0 {
 			return nil
 		}
 
@@ -431,7 +434,7 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 	}, scb, errCb)
 }
 
-func (b *btp2) GetReceiveStatusForSequence(seq int64) *receiveStatus {
+func (b *btp2) getReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range b.rss {
 		if rs.Seq() <= seq && seq <= rs.Seq() {
 			return rs
@@ -440,7 +443,7 @@ func (b *btp2) GetReceiveStatusForSequence(seq int64) *receiveStatus {
 	return nil
 }
 
-func (b *btp2) GetReceiveStatusForHeight(height int64) *receiveStatus {
+func (b *btp2) getReceiveStatusForHeight(height int64) *receiveStatus {
 	for _, rs := range b.rss {
 		if rs.Height() == height {
 			return rs

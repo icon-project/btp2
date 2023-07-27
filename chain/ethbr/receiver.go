@@ -60,12 +60,8 @@ func newReceiveStatus(height, startSeq, lastSeq int64, rps []*client.ReceiptProo
 }
 
 const (
-	DefaultDBType       = db.GoLevelDBBackend
-	EPOCH               = 200
-	EventSignature      = "Message(string,uint256,bytes)"
-	EventIndexSignature = 0
-	EventIndexNext      = 1
-	EventIndexSequence  = 2
+	DefaultDBType  = db.GoLevelDBBackend
+	EventSignature = "Message(string,uint256,bytes)"
 )
 
 type ethbr struct {
@@ -153,7 +149,7 @@ func (e *ethbr) prepareDatabase(baseDir string) (db.Bucket, error) {
 
 func (e *ethbr) Start(bls *btpTypes.BMCLinkStatus) (<-chan interface{}, error) {
 	go func() {
-		err := e.Monitoring(bls)
+		err := e.monitoring(bls)
 		e.l.Debugf("Unknown monitoring error occurred  (err : %v)", err)
 		e.rsc <- err
 	}()
@@ -191,7 +187,7 @@ func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (lin
 	var rmSize int
 	seq := bls.RxSeq + 1
 	rps := make([]*client.ReceiptProof, 0)
-	rs := e.GetReceiveStatusForSequence(seq)
+	rs := e.getReceiveStatusForSequence(seq)
 	if rs == nil {
 		return nil, nil
 	}
@@ -238,7 +234,7 @@ func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (lin
 }
 
 func (e *ethbr) GetHeightForSeq(seq int64) int64 {
-	rs := e.GetReceiveStatusForSequence(seq)
+	rs := e.getReceiveStatusForSequence(seq)
 	if rs != nil {
 		return rs.height
 	} else {
@@ -292,7 +288,7 @@ func (e *ethbr) clearReceiveStatus(bls *btpTypes.BMCLinkStatus) {
 	}
 }
 
-func (e *ethbr) Monitoring(bls *btpTypes.BMCLinkStatus) error {
+func (e *ethbr) monitoring(bls *btpTypes.BMCLinkStatus) error {
 	var height int64
 	fq := &ethereum.FilterQuery{
 		Addresses: []common.Address{common.HexToAddress(e.src.GetAddress().ContractAddress())},
@@ -326,7 +322,7 @@ func (e *ethbr) Monitoring(bls *btpTypes.BMCLinkStatus) error {
 		ls.RxSeq = e.seq
 		ls.Verifier.Height = height
 		e.l.Debugf("Restart Monitoring")
-		e.Monitoring(ls)
+		e.monitoring(ls)
 	}
 
 	return e.c.MonitorBlock(br,
@@ -432,7 +428,7 @@ func (e *ethbr) newBlockUpdate(v *client.BlockNotification) (*client.BlockUpdate
 	return bu, nil
 }
 
-func (e *ethbr) GetReceiveStatusForSequence(seq int64) *receiveStatus {
+func (e *ethbr) getReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range e.rss {
 		if rs.startSeq <= seq && seq <= rs.lastSeq {
 			return rs
@@ -441,7 +437,7 @@ func (e *ethbr) GetReceiveStatusForSequence(seq int64) *receiveStatus {
 	return nil
 }
 
-func (e *ethbr) GetReceiveStatusForHeight(height int64) *receiveStatus {
+func (e *ethbr) getReceiveStatusForHeight(height int64) *receiveStatus {
 	for _, rs := range e.rss {
 		if rs.Height() == height {
 			return rs

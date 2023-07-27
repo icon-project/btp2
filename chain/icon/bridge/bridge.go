@@ -108,7 +108,7 @@ func (b *bridge) Start(bls *types.BMCLinkStatus) (<-chan interface{}, error) {
 	}
 
 	go func() {
-		err := b.Monitoring(bls)
+		err := b.monitoring(bls)
 		b.l.Debugf("Unknown monitoring error occurred  (err : %v)", err)
 		b.rsc <- err
 	}()
@@ -125,7 +125,7 @@ func (b *bridge) GetStatus() (link.ReceiveStatus, error) {
 }
 
 func (b *bridge) GetHeightForSeq(seq int64) int64 {
-	rs := b.GetReceiveStatusForSequence(seq)
+	rs := b.getReceiveStatusForSequence(seq)
 	if rs != nil {
 		return rs.height
 	} else {
@@ -149,7 +149,7 @@ func (b *bridge) BuildBlockProof(bls *types.BMCLinkStatus, height int64) (link.B
 func (b *bridge) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.MessageProof, error) {
 	b.l.Debugf("Build BuildMessageProof (height=%d, rxSeq=%d)", bls.Verifier.Height, bls.RxSeq)
 	var rmSize int
-	rs := b.GetReceiveStatusForSequence(bls.RxSeq + 1)
+	rs := b.getReceiveStatusForSequence(bls.RxSeq + 1)
 	if rs == nil {
 		return nil, nil
 	}
@@ -201,7 +201,7 @@ func (b *bridge) FinalizedStatus(blsc <-chan *types.BMCLinkStatus) {
 	}()
 }
 
-func (b *bridge) Monitoring(bls *types.BMCLinkStatus) error {
+func (b *bridge) monitoring(bls *types.BMCLinkStatus) error {
 	if bls.Verifier.Height < 1 {
 		return fmt.Errorf("cannot catchup from zero height")
 	}
@@ -220,7 +220,7 @@ func (b *bridge) Monitoring(bls *types.BMCLinkStatus) error {
 		ls.RxSeq = b.rs.Seq()
 		ls.Verifier.Height = b.rs.Height()
 		b.l.Debugf("Restart Monitoring")
-		b.Monitoring(ls)
+		b.monitoring(ls)
 	}
 	onConn := func(conn *websocket.Conn) {
 		b.l.Debugf("ReceiveLoop monitorBTP2Block height:%d seq:%d networkId:%d connected %s",
@@ -301,7 +301,7 @@ func (b *bridge) clearReceiveStatus(bls *types.BMCLinkStatus) {
 	}
 }
 
-func (b *bridge) GetReceiveStatusForSequence(seq int64) *receiveStatus {
+func (b *bridge) getReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range b.rss {
 		if rs.Seq() <= seq && seq <= rs.Seq() {
 			return rs
