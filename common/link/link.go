@@ -283,8 +283,14 @@ func (l *Link) handleRelayMessage() error {
 			if l.relayState == RUNNING &&
 				len(l.rss) != 0 &&
 				l.bls.Verifier.Height < l.rss[len(l.rss)-1].Height() {
-				l.buildRelayMessage()
-				l.sendRelayMessage()
+				if err := l.buildRelayMessage(); err != nil {
+					return err
+				}
+
+				if err := l.sendRelayMessage(); err != nil {
+					return err
+				}
+
 			} else {
 				l.l.Debugf("Relay status : %d, ReceiveStatus size: %d", l.relayState, len(l.rss))
 				break
@@ -516,10 +522,14 @@ func (l *Link) result(rr *types.RelayResult) error {
 		switch rr.Err {
 		case errors.SUCCESS:
 			if l.p.LatestResult == true {
-				l.successRelayMessage(rr.Id)
+				if err := l.successRelayMessage(rr.Id); err != nil {
+					return err
+				}
 			} else {
 				if rr.Finalized == true {
-					l.successRelayMessage(rr.Id)
+					if err := l.successRelayMessage(rr.Id); err != nil {
+						return err
+					}
 				}
 			}
 		case errors.BMVUnknown:
@@ -531,7 +541,9 @@ func (l *Link) result(rr *types.RelayResult) error {
 				l.updateBMCLinkStatus()
 				l.removeAllRelayMessage()
 				l.relayState = RUNNING
-				l.handleRelayMessage()
+				if err := l.handleRelayMessage(); err != nil {
+					return err
+				}
 			}
 		case errors.BMVAlreadyVerified:
 			if rr.Finalized != true {
