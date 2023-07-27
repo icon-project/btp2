@@ -24,6 +24,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/icon-project/btp2/chain/ethbr"
+	"github.com/icon-project/btp2/chain/icon/bridge"
+	"github.com/icon-project/btp2/chain/icon/btp2"
 	"github.com/icon-project/btp2/common/cli"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/relay"
@@ -43,6 +46,12 @@ var logoLines = []string{
 	" |_|  \\_\\___|_|\\__,_|\\__, |",
 	"                      __/ |",
 	"                     |___/ ",
+}
+
+func init() {
+	bridge.RegisterIconBridge()
+	btp2.RegisterIconBtp2()
+	ethbr.RegisterEthBridge()
 }
 
 func main() {
