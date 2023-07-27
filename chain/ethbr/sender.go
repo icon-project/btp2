@@ -175,7 +175,7 @@ func (s *sender) result(id string, txh *client.TransactionHashParam) {
 	s.queue.dequeue(id)
 
 	if err != nil {
-		s.l.Debugf("result fail rm id : %d , txHash : %v", id, txh.Hash)
+		s.l.Debugf("result fail rm id : %s , txHash : %v", id, txh.Hash)
 
 		if ec, ok := errors.CoderOf(err); ok {
 			s.rr <- &btpTypes.RelayResult{

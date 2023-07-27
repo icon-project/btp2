@@ -146,6 +146,7 @@ func (e *ethbr) prepareDatabase(baseDir string) (db.Bucket, error) {
 			return nil, err
 		}
 		e.receiveHeight = new(big.Int).SetBytes(h).Int64()
+		e.l.Debugf("Database has height data (height:%d)", e.receiveHeight)
 	}
 	return bk, nil
 }
@@ -169,6 +170,7 @@ func (e *ethbr) GetStatus() (link.ReceiveStatus, error) {
 }
 
 func (e *ethbr) BuildBlockUpdate(bls *btpTypes.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
+	e.l.Debugf("Build BlockUpdate (height=%d, rxSeq=%d)", bls.Verifier.Height, bls.RxSeq)
 	bus := make([]link.BlockUpdate, 0)
 	rs := e.nextReceiveStatus(bls)
 	if rs == nil {
@@ -185,6 +187,7 @@ func (e *ethbr) BuildBlockProof(bls *btpTypes.BMCLinkStatus, height int64) (link
 }
 
 func (e *ethbr) BuildMessageProof(bls *btpTypes.BMCLinkStatus, limit int64) (link.MessageProof, error) {
+	e.l.Debugf("Build BuildMessageProof (height=%d, rxSeq=%d)", bls.Verifier.Height, bls.RxSeq)
 	var rmSize int
 	seq := bls.RxSeq + 1
 	rps := make([]*client.ReceiptProof, 0)

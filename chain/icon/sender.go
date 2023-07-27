@@ -141,7 +141,7 @@ func (s *sender) Relay(rm types.RelayMessage) (string, error) {
 	if MaxQueueSize <= s.queue.len() {
 		return "", errors.InvalidStateError.New("pending queue full")
 	}
-	s.l.Debugf("_relay src address:%s, rm id:%d, rm msg:%s", s.srcAddr.String(), rm.Id(), hex.EncodeToString(rm.Bytes()[:]))
+	s.l.Debugf("_relay src address:%s, rm id:%s, rm msg:%s", s.srcAddr.String(), rm.Id(), hex.EncodeToString(rm.Bytes()[:]))
 
 	thp, err := s._relay(rm)
 	if err != nil {
@@ -193,7 +193,7 @@ func (s *sender) result(id string, txh *client.TransactionHashParam) {
 	s.queue.dequeue(id)
 
 	if err != nil {
-		s.l.Debugf("result fail rm id : %d , txHash : %v", id, txh.Hash)
+		s.l.Debugf("result fail rm id : %s , txHash : %v", id, txh.Hash)
 
 		if ec, ok := errors.CoderOf(err); ok {
 			s.rr <- &types.RelayResult{

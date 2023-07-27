@@ -52,8 +52,8 @@ type BlockProof interface {
 
 type MessageProof interface {
 	RelayMessageItem
-	StartSeqNum() int64 //TODO change
-	LastSeqNum() int64  //TODO change
+	StartSeqNum() int64
+	LastSeqNum() int64
 }
 
 type Receiver interface {

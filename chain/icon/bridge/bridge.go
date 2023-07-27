@@ -134,6 +134,7 @@ func (b *bridge) GetHeightForSeq(seq int64) int64 {
 }
 
 func (b *bridge) BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
+	b.l.Debugf("Build BlockUpdate (height=%d, rxSeq=%d)", bls.Verifier.Height, bls.RxSeq)
 	bus := make([]link.BlockUpdate, 0)
 	rs := b.nextReceiveStatus(bls)
 	bu := newBlockUpdate(bls, rs.Height())
@@ -146,6 +147,7 @@ func (b *bridge) BuildBlockProof(bls *types.BMCLinkStatus, height int64) (link.B
 }
 
 func (b *bridge) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.MessageProof, error) {
+	b.l.Debugf("Build BuildMessageProof (height=%d, rxSeq=%d)", bls.Verifier.Height, bls.RxSeq)
 	var rmSize int
 	rs := b.GetReceiveStatusForSequence(bls.RxSeq + 1)
 	if rs == nil {
@@ -179,7 +181,7 @@ func (b *bridge) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error)
 	for _, rmi := range rmis {
 		if rmi.Type() == link.TypeMessageProof {
 			mp := rmi.(*MessageProof)
-			b.l.Debugf("BuildRelayMessage height:%d data:%s ", mp.nextBls.Verifier.Height,
+			b.l.Debugf("BuildRelayMessage (height:%d, data:%s ", mp.nextBls.Verifier.Height,
 				base64.URLEncoding.EncodeToString(mp.Bytes()))
 
 			return mp.Bytes(), nil

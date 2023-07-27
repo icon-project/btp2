@@ -111,6 +111,7 @@ func (b *btp2) prepareDatabase(baseDir string) (db.Bucket, error) {
 			return nil, err
 		}
 		b.receiveHeight = new(big.Int).SetBytes(h).Int64()
+		b.l.Debugf("Database has height data (height:%d)", b.receiveHeight)
 	}
 	return bk, nil
 }
@@ -187,6 +188,7 @@ func (b *btp2) GetHeightForSeq(seq int64) int64 {
 }
 
 func (b *btp2) BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
+	b.l.Debugf("Build BlockUpdate (height:%d, rxSeq:%d)", bls.Verifier.Height, bls.RxSeq)
 	bus := make([]link.BlockUpdate, 0)
 	rs := b.nextReceiveStatus(bls)
 	if rs == nil {
@@ -217,6 +219,7 @@ func (b *btp2) BuildBlockProof(bls *types.BMCLinkStatus, height int64) (link.Blo
 }
 
 func (b *btp2) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.MessageProof, error) {
+	b.l.Debugf("Build BuildMessageProof (height:%d, rxSeq:%d)", bls.Verifier.Height, bls.RxSeq)
 	rs := b.GetReceiveStatusForHeight(bls.Verifier.Height)
 
 	if rs == nil {
@@ -266,6 +269,7 @@ func (b *btp2) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error) {
 			return nil, err
 		}
 
+		b.l.Debugf("BuildRelayMessage (type:%d, len:%d)", rmi.Type(), rmi.Len())
 		bm.Messages = append(bm.Messages, tpm)
 	}
 

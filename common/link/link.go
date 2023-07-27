@@ -126,6 +126,7 @@ func (l *Link) startReceiverChannel(errCh chan error) error {
 				case ReceiveStatus:
 					rs := t.(ReceiveStatus)
 					l.rss = append(l.rss, t)
+					l.l.Debugf("ReceiveStatus (height:%d, seq:%d)", rs.Height(), rs.Seq())
 					once.Do(func() {
 						if err = l.handleUndeliveredRelayMessage(); err != nil {
 							errCh <- err
@@ -170,6 +171,7 @@ func (l *Link) startSenderChannel(errCh chan error) error {
 }
 
 func (l *Link) buildRelayMessage() error {
+	l.l.Debugf("BuildRelayMessage (bls height:%d, bls rx seq:%d)", l.bls.Verifier.Height, l.bls.RxSeq)
 	if len(l.rmi.rmis) == 0 {
 		l.resetRelayMessageItem()
 	}
@@ -219,6 +221,8 @@ func (l *Link) buildRelayMessage() error {
 func (l *Link) sendRelayMessage() error {
 	for _, rm := range l.rms {
 		if rm.sendingStatus == false {
+			l.l.Debugf("SendRelayMessage (bls height:%d, bls txSeq:%d, bls rxSeq:%d)",
+				rm.bls.Verifier.Height, rm.bls.TxSeq, rm.bls.RxSeq)
 			_, err := l.s.Relay(rm)
 			if err != nil {
 				if errors.InvalidStateError.Equals(err) {
@@ -256,6 +260,8 @@ func (l *Link) appendRelayMessage() error {
 
 		rm.sendingStatus = false
 		l.rms = append(l.rms, rm)
+		l.l.Debugf("AppendRelayMessage (bls height:%d, bls txSeq:%d, bls rxSeq:%d)",
+			rm.bls.Verifier.Height, rm.bls.TxSeq, rm.bls.RxSeq)
 	}
 
 	l.rmi.rmis = l.rmi.rmis[:0]
@@ -279,6 +285,7 @@ func (l *Link) handleRelayMessage() error {
 				l.buildRelayMessage()
 				l.sendRelayMessage()
 			} else {
+				l.l.Debugf("Relay status : %d, ReceiveStatus size: %d", l.relayState, len(l.rss))
 				break
 			}
 		}
@@ -287,6 +294,7 @@ func (l *Link) handleRelayMessage() error {
 }
 
 func (l *Link) buildBlockUpdates(bs *types.BMCLinkStatus) ([]BlockUpdate, error) {
+	l.l.Debugf("BuildBlockUpdates (bls height:%d, bls rxSeq:%d)", l.bls.Verifier.Height, l.bls.RxSeq)
 	for {
 		bus, err := l.r.BuildBlockUpdate(bs, l.limitSize-l.rmi.size)
 		if err != nil {
@@ -304,7 +312,7 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 		return nil
 	}
 	for l.bls.RxSeq < rs.Seq() {
-		l.l.Debugf("handleUndeliveredRelayMessage ReceiveStatus(height : %d, seq : %s), BMCLinkStatus(height : %d, seq : %s)",
+		l.l.Debugf("HandleUndeliveredRelayMessage ReceiveStatus(height : %d, seq : %s), BMCLinkStatus(height : %d, seq : %s)",
 			rs.Height(), rs.Seq(), l.bls.Verifier.Height, l.bls.RxSeq)
 		_, err := l.buildProof(nil)
 		if err != nil {
@@ -319,6 +327,7 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 }
 
 func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
+	l.l.Debugf("BuildProof (bls height:%d, bls rx seq:%d)", l.bls.Verifier.Height, l.bls.RxSeq)
 	var mpLen int64
 	rs := l.getReceiveStatusForHeight(l.bls.Verifier.Height)
 	if rs == nil {
