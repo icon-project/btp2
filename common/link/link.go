@@ -84,12 +84,11 @@ func NewLink(srcCfg ChainConfig, r Receiver, l log.Logger) types.Link {
 	return link
 }
 
-func (l *Link) Start(sender types.Sender) error {
+func (l *Link) Start(sender types.Sender, errChan chan error) error {
 	l.s = sender
 	l.p = sender.GetPreference()
 
-	errCh := make(chan error)
-	if err := l.startSenderChannel(errCh); err != nil {
+	if err := l.startSenderChannel(errChan); err != nil {
 		return err
 	}
 
@@ -100,20 +99,11 @@ func (l *Link) Start(sender types.Sender) error {
 
 	l.bls = bls
 
-	if err := l.startReceiverChannel(errCh); err != nil {
+	if err := l.startReceiverChannel(errChan); err != nil {
 		return err
 	}
-
 	l.r.FinalizedStatus(l.blsChannel)
 
-	for {
-		select {
-		case err := <-errCh:
-			if err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 
@@ -157,11 +147,6 @@ func (l *Link) startReceiverChannel(errCh chan error) error {
 				}
 			}
 		}
-
-		select {
-		case errCh <- err:
-		default:
-		}
 	}()
 	return nil
 }
@@ -179,11 +164,6 @@ func (l *Link) startSenderChannel(errCh chan error) error {
 				err := l.result(rc)
 				errCh <- err
 			}
-		}
-
-		select {
-		case errCh <- err:
-		default:
 		}
 	}()
 	return nil

@@ -37,7 +37,7 @@ type Wallet interface {
 }
 
 type Link interface {
-	Start(sender Sender) error
+	Start(sender Sender, errChan chan error) error
 	Stop()
 }
 

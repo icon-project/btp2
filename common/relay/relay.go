@@ -103,14 +103,9 @@ func (r *Relay) Start() error {
 }
 
 func start(link types.Link, sender types.Sender, errCh chan error) error {
-	go func() {
-		err := link.Start(sender)
-		select {
-		case errCh <- err:
-		default:
-		}
-	}()
-
+	if err := link.Start(sender, errCh); err != nil {
+		return err
+	}
 	return nil
 }
 
