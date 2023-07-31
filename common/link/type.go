@@ -57,7 +57,7 @@ type MessageProof interface {
 }
 
 type Receiver interface {
-	Start(bls *types.BMCLinkStatus) (<-chan ReceiveStatus, error)
+	Start(bls *types.BMCLinkStatus) (<-chan interface{}, error)
 	Stop()
 	GetStatus() (ReceiveStatus, error)
 	BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]BlockUpdate, error)

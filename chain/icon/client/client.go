@@ -34,6 +34,7 @@ import (
 	"github.com/icon-project/btp2/common"
 	"github.com/icon-project/btp2/common/crypto"
 	"github.com/icon-project/btp2/common/errors"
+	"github.com/icon-project/btp2/common/intconv"
 	"github.com/icon-project/btp2/common/jsonrpc"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
@@ -42,16 +43,12 @@ import (
 const (
 	DefaultSendTransactionRetryInterval        = 3 * time.Second         //3sec
 	DefaultGetTransactionResultPollingInterval = 1500 * time.Millisecond //1.5sec
+	DefaultGetBtpMessageInterval               = time.Second             //1sec
 )
 
 var (
 	BlockRetryLimit = 5
 )
-
-type Wallet interface {
-	Sign(data []byte) ([]byte, error)
-	Address() string
-}
 
 type Client struct {
 	*jsonrpc.Client
@@ -66,7 +63,7 @@ type SendKeepaliveMessage struct {
 
 var txSerializeExcludes = map[string]bool{"signature": true}
 
-func (c *Client) SignTransaction(w Wallet, p *TransactionParam) error {
+func (c *Client) SignTransaction(w types.Wallet, p *TransactionParam) error {
 	p.Timestamp = NewHexInt(time.Now().UnixNano() / int64(time.Microsecond))
 	js, err := json.Marshal(p)
 	if err != nil {
@@ -231,7 +228,26 @@ func (c *Client) GetBTPHeader(p *BTPBlockParam) (string, error) {
 	}
 }
 
-func (c *Client) GetBTPMessage(p *BTPBlockParam) ([]string, error) {
+func (c *Client) GetBTPMessage(height, nid int64) ([]string, error) {
+	for {
+		pr := &BTPBlockParam{Height: HexInt(intconv.FormatInt(height)), NetworkId: HexInt(intconv.FormatInt(nid))}
+		mgs, err := c.getBTPMessage(pr)
+		if err != nil {
+			if je, ok := err.(*jsonrpc.Error); ok {
+				switch je.Code {
+				case JsonrpcErrorCodeNotFound:
+					<-time.After(DefaultGetBtpMessageInterval)
+					continue
+				default:
+					return nil, err
+				}
+			}
+		}
+		return mgs, nil
+	}
+}
+
+func (c *Client) getBTPMessage(p *BTPBlockParam) ([]string, error) {
 	var result []string
 	var retry = BlockRetryLimit
 	for {
@@ -362,6 +378,7 @@ func (c *Client) MonitorBTP(p *BTPRequest, cb func(conn *websocket.Conn, v *BTPN
 		case *BTPNotification:
 			if err := cb(conn, t); err != nil {
 				c.l.Debugf("MonitorBTP callback return err:%+v", err)
+				errCb(conn, err)
 			}
 		case WSEvent:
 			c.l.Debugf("MonitorBTP WSEvent %s %+v", conn.LocalAddr().String(), t)

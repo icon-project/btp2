@@ -40,20 +40,18 @@ fi
 
 if [ "x$BMV_BRIDGE" = xtrue ]; then
   echo "Using Bridge mode"
+  SRC_TYPE="icon-bridge"
 else
   echo "Using BTPBlock mode"
-  BMV_BRIDGE=false
+  SRC_TYPE="icon-btpblock"
 fi
+DST_TYPE="eth-bridge"
+
+SRC_CONFIG='{"address":"'"$SRC_ADDRESS"'","endpoint":"'"$SRC_ENDPOINT"'","key_store":"'"$SRC_KEY_STORE"'","key_password":"'"$SRC_KEY_PASSWORD"'","type":"'"$SRC_TYPE"'"}'
+DST_CONFIG='{"address":"'"$DST_ADDRESS"'","endpoint":"'"$DST_ENDPOINT"'","key_store":"'"$DST_KEY_STORE"'","key_password":"'"$DST_KEY_PASSWORD"'","type":"'"$DST_TYPE"'"}'
 
 ${RELAY_BIN} \
     --direction both \
-    --src.address ${SRC_ADDRESS} \
-    --src.endpoint ${SRC_ENDPOINT} \
-    --src.key_store ${SRC_KEY_STORE} \
-    --src.key_password ${SRC_KEY_PASSWORD} \
-    --src.bridge_mode=${BMV_BRIDGE} \
-    --dst.address ${DST_ADDRESS} \
-    --dst.endpoint ${DST_ENDPOINT} \
-    --dst.key_store ${DST_KEY_STORE} \
-    --dst.key_password ${DST_KEY_PASSWORD} \
+    --src_config ${SRC_CONFIG} \
+    --dst_config ${DST_CONFIG} \
     start

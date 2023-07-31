@@ -25,7 +25,7 @@ import (
 var BigIntOne = big.NewInt(1)
 
 type RelayMessage interface {
-	Id() int
+	Id() string
 	Bytes() []byte
 	Size() int64
 }
@@ -37,7 +37,7 @@ type Wallet interface {
 }
 
 type Link interface {
-	Start(sender Sender) error
+	Start(sender Sender, errChan chan error) error
 	Stop()
 }
 
@@ -51,16 +51,23 @@ type BMCLinkStatus struct {
 }
 
 type RelayResult struct {
-	Id        int
+	Id        string
 	Err       errors.Code
 	Finalized bool
+}
+
+type Preference struct {
+	TxSizeLimit       int64
+	MarginForLimit    int64
+	LatestResult      bool
+	FilledBlockUpdate bool
+	Other             map[string]interface{}
 }
 
 type Sender interface {
 	Start() (<-chan *RelayResult, error)
 	Stop()
 	GetStatus() (*BMCLinkStatus, error)
-	Relay(rm RelayMessage) (int, error)
-	GetMarginForLimit() int64
-	TxSizeLimit() int
+	Relay(rm RelayMessage) (string, error)
+	GetPreference() Preference
 }
