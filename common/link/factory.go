@@ -2,7 +2,9 @@ package link
 
 import (
 	"encoding/json"
+	"fmt"
 
+	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
 )
@@ -15,80 +17,77 @@ type Factory struct {
 	NewSender        func(srcAddr types.BtpAddress, dstCfg ChainConfig, l log.Logger) (types.Sender, error)
 }
 
-var factories []*Factory
+var factories = map[string]*Factory{}
 
 func RegisterFactory(f *Factory) {
-	if f != nil {
-		if checkDuplicates(f) {
-			return //TODO err??
-		}
-		factories = append(factories, f)
+	if f.NewLink == nil && f.NewReceiver == nil {
+		panic("NewLink and NewReader are empty")
 	}
-}
-
-func checkDuplicates(f *Factory) bool {
-	for _, cf := range factories {
-		if cf.Type == f.Type {
-			return true
-		}
+	if _, ok := factories[f.Type]; ok {
+		panic(fmt.Sprintf("Duplicate factory registration for %s", f.Type))
 	}
-	return false
+	factories[f.Type] = f
 }
 
 func CreateLink(srcRaw, dstRaw json.RawMessage, l log.Logger, baseDir string) (types.Link, error) {
 
+	var srcCfgCommon ChainConfigCommon
+	if err := json.Unmarshal(srcRaw, &srcCfgCommon); err != nil {
+		return nil, err
+	}
+	srcType := srcCfgCommon.GetType()
+	if len(srcType) == 0 {
+		return nil, errors.IllegalArgumentError.New("empty type in source config")
+
+	}
 	//Sender
 	var dstCfgCommon ChainConfigCommon
 	if err := json.Unmarshal(dstRaw, &dstCfgCommon); err != nil {
 		return nil, err
 	}
 
-	for _, f := range factories {
+	if f, ok := factories[srcType]; ok {
 		srcCfg, err := f.ParseChainConfig(srcRaw)
 		if err != nil {
 			return nil, err
 		}
-		if srcCfg != nil {
-			link, err := f.NewLink(srcCfg, dstCfgCommon.GetAddress(), baseDir, l)
+		if f.NewLink != nil {
+			return f.NewLink(srcCfg, dstCfgCommon.GetAddress(), baseDir, l)
+		} else {
+			receiver, err := f.NewReceiver(srcCfg, dstCfgCommon.GetAddress(), baseDir, l)
 			if err != nil {
 				return nil, err
 			}
-
-			if link == nil {
-				receiver, err := f.NewReceiver(srcCfg, dstCfgCommon.GetAddress(), baseDir, l)
-				if err != nil {
-					return nil, err
-				}
-
-				link = NewLink(srcCfg, receiver, l)
-			}
-			return link, nil
+			return NewLink(srcCfg, receiver, l), nil
 		}
-	}
 
-	return nil, nil
+	} else {
+		return nil, errors.NotFoundError.Errorf("UnknownSourceType(type=%s)", srcType)
+	}
 }
 
 func CreateSender(srcRaw, dstRaw json.RawMessage, l log.Logger) (types.Sender, error) {
-	//Sender
 	var srcCfgCommon ChainConfigCommon
 	if err := json.Unmarshal(srcRaw, &srcCfgCommon); err != nil {
 		return nil, err
 	}
+	var dstCfgCommon ChainConfigCommon
+	if err := json.Unmarshal(dstRaw, &dstCfgCommon); err != nil {
+		return nil, err
+	}
+	dstType := dstCfgCommon.GetType()
+	if len(dstType) == 0 {
+		return nil, errors.IllegalArgumentError.New("empty type in dst config")
+	}
 
-	for _, f := range factories {
+	if f, ok := factories[dstType]; ok {
 		dstCfg, err := f.ParseChainConfig(dstRaw)
 		if err != nil {
 			return nil, err
 		}
-		if dstCfg != nil {
-			s, err := f.NewSender(srcCfgCommon.GetAddress(), dstCfg, l)
-			if err != nil {
-				return nil, err
-			}
-			return s, nil
-		}
-	}
 
-	return nil, nil
+		return f.NewSender(srcCfgCommon.GetAddress(), dstCfg, l)
+	} else {
+		return nil, errors.NotFoundError.Errorf("UnknownSourceType(type=%s)", dstType)
+	}
 }
