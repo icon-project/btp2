@@ -48,7 +48,7 @@ var (
 	txSizeLimit = int(math.Ceil(txMaxDataSize / (1 + txOverheadScale)))
 )
 
-type Queue struct {
+type queue struct {
 	values []*relayMessageTx
 }
 
@@ -57,12 +57,12 @@ type relayMessageTx struct {
 	txHash []byte
 }
 
-func NewQueue() *Queue {
-	queue := &Queue{}
+func newQueue() *queue {
+	queue := &queue{}
 	return queue
 }
 
-func (q *Queue) enqueue(id string, txHash []byte) error {
+func (q *queue) enqueue(id string, txHash []byte) error {
 	if MaxQueueSize <= len(q.values) {
 		return fmt.Errorf("queue full")
 	}
@@ -74,7 +74,7 @@ func (q *Queue) enqueue(id string, txHash []byte) error {
 	return nil
 }
 
-func (q *Queue) dequeue(id string) {
+func (q *queue) dequeue(id string) {
 	for i, rm := range q.values {
 		if rm.id == id {
 			q.values = q.values[i+1:]
@@ -83,11 +83,11 @@ func (q *Queue) dequeue(id string) {
 	}
 }
 
-func (q *Queue) isEmpty() bool {
+func (q *queue) isEmpty() bool {
 	return len(q.values) == 0
 }
 
-func (q *Queue) len() int {
+func (q *queue) len() int {
 	return len(q.values)
 }
 
@@ -102,7 +102,7 @@ type sender struct {
 	bmc                *binding.BMC
 	rr                 chan *btpTypes.RelayResult
 	isFoundOffsetBySeq bool
-	queue              *Queue
+	queue              *queue
 }
 
 func newSender(srcAddr btpTypes.BtpAddress, dstCfg link.ChainConfig, w btpTypes.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
@@ -112,7 +112,7 @@ func newSender(srcAddr btpTypes.BtpAddress, dstCfg link.ChainConfig, w btpTypes.
 		w:       w,
 		l:       l,
 		rr:      make(chan *btpTypes.RelayResult),
-		queue:   NewQueue(),
+		queue:   newQueue(),
 	}
 
 	b, err := json.Marshal(opt)

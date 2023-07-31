@@ -221,8 +221,8 @@ func (l *Link) buildRelayMessage() error {
 func (l *Link) sendRelayMessage() error {
 	for _, rm := range l.rms {
 		if rm.sendingStatus == false {
-			l.l.Debugf("SendRelayMessage (bls height:%d, bls txSeq:%d, bls rxSeq:%d)",
-				rm.bls.Verifier.Height, rm.bls.TxSeq, rm.bls.RxSeq)
+			l.l.Debugf("SendRelayMessage (bls height:%d, bls rxSeq:%d)",
+				rm.bls.Verifier.Height, rm.bls.RxSeq)
 			_, err := l.s.Relay(rm)
 			if err != nil {
 				if errors.InvalidStateError.Equals(err) {
@@ -261,8 +261,8 @@ func (l *Link) appendRelayMessage() error {
 
 		rm.sendingStatus = false
 		l.rms = append(l.rms, rm)
-		l.l.Debugf("AppendRelayMessage (bls height:%d, bls txSeq:%d, bls rxSeq:%d)",
-			rm.bls.Verifier.Height, rm.bls.TxSeq, rm.bls.RxSeq)
+		l.l.Debugf("AppendRelayMessage (bls height:%d, bls rxSeq:%d)",
+			rm.bls.Verifier.Height, rm.bls.RxSeq)
 	}
 
 	l.rmi.rmis = l.rmi.rmis[:0]
@@ -564,7 +564,9 @@ func (l *Link) result(rr *types.RelayResult) error {
 			}
 		case errors.BMVRevertInvalidBlockWitnessOld:
 			//TODO Error handling required on Finalized
-			l.updateBlockProof(rr.Id)
+			if err := l.updateBlockProof(rr.Id); err != nil {
+				return err
+			}
 		default:
 			l.l.Panicf("fail to GetResult RelayMessage ID:%v ErrorCoder:%+v",
 				rr.Id, rr.Err)
