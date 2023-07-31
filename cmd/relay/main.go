@@ -72,6 +72,7 @@ func main() {
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		baseDir := rootVc.GetString("base_dir")
 		logfile := rootVc.GetString("log_writer.filename")
+
 		cfg.FilePath = rootVc.GetString("config")
 		if cfg.FilePath != "" {
 			f, err := os.Open(cfg.FilePath)
@@ -84,10 +85,33 @@ func main() {
 				return fmt.Errorf("fail to read config file=%s err=%+v", cfg.FilePath, err)
 			}
 			cfg.FilePath, _ = filepath.Abs(cfg.FilePath)
+			if err := rootVc.Unmarshal(&cfg, cli.ViperDecodeOptJson); err != nil {
+				return fmt.Errorf("fail to unmarshall config from env err=%+v", err)
+			}
+		} else {
+			relayCfg := &relay.RelayConfig{}
+			if err := rootVc.Unmarshal(&relayCfg, cli.ViperDecodeOptJson); err != nil {
+				return fmt.Errorf("fail to unmarshall config from env err=%+v", err)
+			}
+			cfg.RelayConfig = *relayCfg
+
+			if pp, err := cmd.Flags().GetString("src_config"); err == nil && len(pp) > 0 {
+				if parsed, err := cli.ReadJSONObject(pp); err != nil {
+					return err
+				} else if parsed != nil {
+					cfg.Src = parsed
+				}
+			}
+
+			if pp, err := cmd.Flags().GetString("dst_config"); err == nil && len(pp) > 0 {
+				if parsed, err := cli.ReadJSONObject(pp); err != nil {
+					return err
+				} else if parsed != nil {
+					cfg.Dst = parsed
+				}
+			}
 		}
-		if err := rootVc.Unmarshal(&cfg, cli.ViperDecodeOptJson); err != nil {
-			return fmt.Errorf("fail to unmarshall config from env err=%+v", err)
-		}
+
 		if baseDir != "" {
 			cfg.BaseDir = cfg.ResolveRelative(baseDir)
 		}
@@ -101,25 +125,25 @@ func main() {
 	rootPFlags.StringP("config", "c", "", "Parsing configuration file")
 
 	//Chains Config
-	rootPFlags.String("chains_config.src", "", "Source chain config")
-	rootPFlags.String("chains_config.dst", "", "Destination chain config")
+	rootPFlags.String("src_config", "", "raw json string or '@<source config file>' for stdin for parameter JSON")
+	rootPFlags.String("dst_config", "", "raw json string or '@<destination config file>'for stdin for parameter JSON")
 
 	//RelayConfig
-	rootPFlags.String("relay_config.direction", "both", "relay network direction ( both, front, reverse)")
-	rootPFlags.String("relay_config.base_dir", "", "Base directory for data")
-	rootPFlags.String("relay_config.log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")
-	rootPFlags.String("relay_config.console_level", "trace", "Console log level (trace,debug,info,warn,error,fatal,panic)")
-	rootPFlags.String("relay_config.log_forwarder.vendor", "", "LogForwarder vendor (fluentd,logstash)")
-	rootPFlags.String("relay_config.log_forwarder.address", "", "LogForwarder address")
-	rootPFlags.String("relay_config.log_forwarder.level", "info", "LogForwarder level")
-	rootPFlags.String("relay_config.log_forwarder.name", "", "LogForwarder name")
-	rootPFlags.StringToString("relay_config.log_forwarder.options", nil, "LogForwarder options, comma-separated 'key=value'")
-	rootPFlags.String("relay_config.log_writer.filename", "", "Log file name (rotated files resides in same directory)")
-	rootPFlags.Int("relay_config.log_writer.maxsize", 100, "Maximum log file size in MiB")
-	rootPFlags.Int("relay_config.log_writer.maxage", 0, "Maximum age of log file in day")
-	rootPFlags.Int("relay_config.log_writer.maxbackups", 0, "Maximum number of backups")
-	rootPFlags.Bool("relay_config.log_writer.localtime", false, "Use localtime on rotated log file instead of UTC")
-	rootPFlags.Bool("relay_config.log_writer.compress", false, "Use gzip on rotated log file")
+	rootPFlags.String("direction", "reverse", "relay network direction (both,front,reverse)")
+	rootPFlags.String("base_dir", "", "Base directory for data")
+	rootPFlags.String("log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")
+	rootPFlags.String("console_level", "trace", "Console log level (trace,debug,info,warn,error,fatal,panic)")
+	rootPFlags.String("log_forwarder.vendor", "", "LogForwarder vendor (fluentd,logstash)")
+	rootPFlags.String("log_forwarder.address", "", "LogForwarder address")
+	rootPFlags.String("log_forwarder.level", "info", "LogForwarder level")
+	rootPFlags.String("log_forwarder.name", "", "LogForwarder name")
+	rootPFlags.StringToString("log_forwarder.options", nil, "LogForwarder options, comma-separated 'key=value'")
+	rootPFlags.String("log_writer.filename", "", "Log file name (rotated files resides in same directory)")
+	rootPFlags.Int("log_writer.maxsize", 100, "Maximum log file size in MiB")
+	rootPFlags.Int("log_writer.maxage", 0, "Maximum age of log file in day")
+	rootPFlags.Int("log_writer.maxbackups", 0, "Maximum number of backups")
+	rootPFlags.Bool("log_writer.localtime", false, "Use localtime on rotated log file instead of UTC")
+	rootPFlags.Bool("log_writer.compress", false, "Use gzip on rotated log file")
 	cli.BindPFlags(rootVc, rootPFlags)
 
 	saveCmd := &cobra.Command{
