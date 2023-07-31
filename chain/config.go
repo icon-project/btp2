@@ -17,15 +17,13 @@
 package chain
 
 import (
-	"encoding/json"
-
 	"github.com/icon-project/btp2/common/types"
 )
 
 type BaseConfig struct {
 	Address      types.BtpAddress `json:"address"`
 	Endpoint     string           `json:"endpoint"`
-	KeyStoreData json.RawMessage  `json:"key_store"`
+	KeyStore     string           `json:"key_store"`
 	Type         string           `json:"type"`
 	KeyStorePass string           `json:"key_password,omitempty"`
 	KeySecret    string           `json:"key_secret,omitempty"`
