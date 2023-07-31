@@ -378,6 +378,7 @@ func (c *Client) MonitorBTP(p *BTPRequest, cb func(conn *websocket.Conn, v *BTPN
 		case *BTPNotification:
 			if err := cb(conn, t); err != nil {
 				c.l.Debugf("MonitorBTP callback return err:%+v", err)
+				errCb(conn, err)
 			}
 		case WSEvent:
 			c.l.Debugf("MonitorBTP WSEvent %s %+v", conn.LocalAddr().String(), t)
