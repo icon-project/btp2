@@ -116,8 +116,9 @@ func (e *ethbr) setHeightToDatabase() {
 }
 
 func (e *ethbr) prepareDatabase(baseDir string) (db.Bucket, error) {
-	e.l.Debugln("open database", filepath.Join(baseDir+e.src.GetAddress().NetworkID(), e.dst.NetworkAddress()))
-	database, err := db.Open(baseDir+e.src.GetAddress().NetworkID(), string(DefaultDBType), e.dst.NetworkAddress())
+	dbDir := filepath.Join(baseDir, e.src.GetAddress().NetworkAddress())
+	e.l.Debugln("open database", filepath.Join(dbDir, e.dst.NetworkAddress()))
+	database, err := db.Open(dbDir, string(DefaultDBType), e.dst.NetworkAddress())
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to open database")
 	}

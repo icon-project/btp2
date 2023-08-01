@@ -85,8 +85,9 @@ func (b *btp2) setHeightToDatabase() {
 }
 
 func (b *btp2) prepareDatabase(baseDir string) (db.Bucket, error) {
-	b.l.Debugln("open database", filepath.Join(baseDir+b.src.GetAddress().NetworkID(), b.dst.NetworkAddress()))
-	database, err := db.Open(baseDir+b.src.GetAddress().NetworkID(), string(DefaultDBType), b.dst.NetworkAddress())
+	dbDir := filepath.Join(baseDir, b.src.GetAddress().NetworkAddress())
+	b.l.Debugln("open database", filepath.Join(dbDir, b.dst.NetworkAddress()))
+	database, err := db.Open(dbDir, string(DefaultDBType), b.dst.NetworkAddress())
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to open database")
 	}

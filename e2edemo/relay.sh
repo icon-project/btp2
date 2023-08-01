@@ -64,6 +64,7 @@ SRC_CONFIG='{"address":"'"$SRC_ADDRESS"'","endpoint":"'"$SRC_ENDPOINT"'","key_st
 DST_CONFIG='{"address":"'"$DST_ADDRESS"'","endpoint":"'"$DST_ENDPOINT"'","key_store":"'"$DST_KEY_STORE"'","key_password":"'"$DST_KEY_PASSWORD"'","type":"'"$DST_TYPE"'"}'
 
 ${RELAY_BIN} \
+    --base_dir .relay \
     --direction both \
     --src_config ${SRC_CONFIG} \
     --dst_config ${DST_CONFIG} \
