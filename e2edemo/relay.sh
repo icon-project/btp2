@@ -38,6 +38,14 @@ else
   DST_KEY_PASSWORD=$(cat ${CHAIN_CONFIG} | jq -r .chains.${DST}.keypass)
 fi
 
+SRC_NETWORK_NAME=$(echo ${SRC_NETWORK} | cut -d. -f2)
+DST_NETWORK_NAME=$(echo ${DST_NETWORK} | cut -d. -f2)
+# Assume src is always an ICON chain
+if [ $SRC_NETWORK_NAME != icon ]; then
+  echo "Source network is not an ICON-compatible chain: $SRC_NETWORK_NAME"
+  exit 1
+fi
+# Determine src type
 if [ "x$BMV_BRIDGE" = xtrue ]; then
   echo "Using Bridge mode"
   SRC_TYPE="icon-bridge"
@@ -45,7 +53,12 @@ else
   echo "Using BTPBlock mode"
   SRC_TYPE="icon-btpblock"
 fi
-DST_TYPE="eth-bridge"
+# Determine dst type
+if [ $DST_NETWORK_NAME == icon ]; then
+  DST_TYPE="icon-btpblock"
+else
+  DST_TYPE="eth-bridge"
+fi
 
 SRC_CONFIG='{"address":"'"$SRC_ADDRESS"'","endpoint":"'"$SRC_ENDPOINT"'","key_store":"'"$SRC_KEY_STORE"'","key_password":"'"$SRC_KEY_PASSWORD"'","type":"'"$SRC_TYPE"'"}'
 DST_CONFIG='{"address":"'"$DST_ADDRESS"'","endpoint":"'"$DST_ENDPOINT"'","key_store":"'"$DST_KEY_STORE"'","key_password":"'"$DST_KEY_PASSWORD"'","type":"'"$DST_TYPE"'"}'
