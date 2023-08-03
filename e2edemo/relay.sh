@@ -60,8 +60,17 @@ else
   DST_TYPE="eth-bridge"
 fi
 
-SRC_CONFIG='{"address":"'"$SRC_ADDRESS"'","endpoint":"'"$SRC_ENDPOINT"'","key_store":"'"$SRC_KEY_STORE"'","key_password":"'"$SRC_KEY_PASSWORD"'","type":"'"$SRC_TYPE"'"}'
-DST_CONFIG='{"address":"'"$DST_ADDRESS"'","endpoint":"'"$DST_ENDPOINT"'","key_store":"'"$DST_KEY_STORE"'","key_password":"'"$DST_KEY_PASSWORD"'","type":"'"$DST_TYPE"'"}'
+get_config() {
+  echo '{
+    "address": "'$1'",
+    "endpoint": "'$2'",
+    "key_store": "'$3'",
+    "key_password": "'$4'",
+    "type": "'$5'"
+  }' | tr -d [:space:]
+}
+SRC_CONFIG=$(get_config "$SRC_ADDRESS" "$SRC_ENDPOINT" "$SRC_KEY_STORE" "$SRC_KEY_PASSWORD" "$SRC_TYPE")
+DST_CONFIG=$(get_config "$DST_ADDRESS" "$DST_ENDPOINT" "$DST_KEY_STORE" "$DST_KEY_PASSWORD" "$DST_TYPE")
 
 ${RELAY_BIN} \
     --base_dir .relay \
