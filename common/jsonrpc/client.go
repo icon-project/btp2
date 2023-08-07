@@ -40,9 +40,11 @@ func (c *Client) _do(req *http.Request) (resp *http.Response, err error) {
 	return
 }
 
-//Supported Parameter Structures only 'by-name through an Object'
-//refer https://www.jsonrpc.org/specification#parameter_structures
 func (c *Client) Do(method string, reqPtr, respPtr interface{}) (jrResp *Response, err error) {
+	return c.DoURL(c.Endpoint, method, reqPtr, respPtr)
+}
+
+func (c *Client) DoURL(url string, method string, reqPtr, respPtr interface{}) (jrResp *Response, err error) {
 	jrReq := &Request{
 		ID:      time.Now().UnixNano() / int64(time.Millisecond),
 		Version: Version,
@@ -60,7 +62,7 @@ func (c *Client) Do(method string, reqPtr, respPtr interface{}) (jrResp *Respons
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", c.Endpoint, bytes.NewReader(reqB))
+	req, err := http.NewRequest("POST", url, bytes.NewReader(reqB))
 	if err != nil {
 		return
 	}

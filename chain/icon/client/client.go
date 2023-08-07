@@ -55,9 +55,10 @@ type Wallet interface {
 
 type Client struct {
 	*jsonrpc.Client
-	conns map[string]*websocket.Conn
-	l     log.Logger
-	mtx   sync.Mutex
+	DebugEndPoint string
+	conns         map[string]*websocket.Conn
+	l             log.Logger
+	mtx           sync.Mutex
 }
 
 type SendKeepaliveMessage struct {
@@ -599,6 +600,33 @@ func (c *Client) wsReadJSONLoop(ctx context.Context, conn *websocket.Conn, respP
 	}
 }
 
+func NewTransactionParamForEstimate(param *TransactionParam) *TransactionParamForEstimate {
+	return &TransactionParamForEstimate{
+		Version:     param.Version,
+		FromAddress: param.FromAddress,
+		ToAddress:   param.ToAddress,
+		Value:       param.Value,
+		Timestamp:   param.Timestamp,
+		NetworkID:   param.NetworkID,
+		Nonce:       param.Nonce,
+		DataType:    param.DataType,
+		Data:        param.Data,
+	}
+}
+
+func (c *Client) EstimateStep(param *TransactionParamForEstimate) (int64, error) {
+	if len(c.DebugEndPoint) == 0 {
+		return 0, errors.InvalidStateError.New("UnavailableDebugEndPoint")
+	}
+	param.Timestamp = NewHexInt(time.Now().UnixNano() / int64(time.Microsecond))
+	var result HexInt
+	if _, err := c.DoURL(c.DebugEndPoint,
+		"debug_estimateStep", param, &result); err != nil {
+		return 0, err
+	}
+	return result.Value()
+}
+
 func MapError(err error) error {
 	if err != nil {
 		switch re := err.(type) {
@@ -638,9 +666,10 @@ func NewClient(uri string, l log.Logger) *Client {
 	//TODO options {MaxRetrySendTx, MaxRetryGetResult, MaxIdleConnsPerHost, Debug, Dump}
 	tr := &http.Transport{MaxIdleConnsPerHost: 1000}
 	c := &Client{
-		Client: jsonrpc.NewJsonRpcClient(&http.Client{Transport: tr}, uri),
-		conns:  make(map[string]*websocket.Conn),
-		l:      l,
+		Client:        jsonrpc.NewJsonRpcClient(&http.Client{Transport: tr}, uri),
+		DebugEndPoint: guessDebugEndpoint(uri),
+		conns:         make(map[string]*websocket.Conn),
+		l:             l,
 	}
 	opts := IconOptions{}
 	opts.SetBool(IconOptionsDebug, true)
@@ -716,4 +745,23 @@ func NewIconOptionsByHeader(h http.Header) IconOptions {
 		return m
 	}
 	return nil
+}
+
+func guessDebugEndpoint(endpoint string) string {
+	uo, err := url.Parse(endpoint)
+	if err != nil {
+		return ""
+	}
+	ps := strings.Split(uo.Path, "/")
+	for i, v := range ps {
+		if v == "api" {
+			if len(ps) > i+1 && ps[i+1] == "v3" {
+				ps[i+1] = "v3d"
+				uo.Path = strings.Join(ps, "/")
+				return uo.String()
+			}
+			break
+		}
+	}
+	return ""
 }
