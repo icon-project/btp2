@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"math/big"
 	"path/filepath"
-	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
 
 	"github.com/icon-project/btp2/chain/icon/client"
 	"github.com/icon-project/btp2/common/codec"
-	"github.com/icon-project/btp2/common/db"
 	"github.com/icon-project/btp2/common/errors"
 	"github.com/icon-project/btp2/common/intconv"
 	"github.com/icon-project/btp2/common/link"
@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	DefaultDBType           = db.GoLevelDBBackend
-	DefaultProgressInterval = 5 * time.Minute //5min
+	DefaultProgressInterval = 50
+	ReceiveBlockPrefix      = "H|"
 )
 
 type receiveStatus struct {
@@ -47,18 +47,17 @@ func newReceiveStatus(height, seq int64) (*receiveStatus, error) {
 }
 
 type btp2 struct {
-	l             log.Logger
-	src           link.ChainConfig
-	dst           types.BtpAddress
-	c             *client.Client
-	receiveHeight int64
-	bk            db.Bucket
-	nid           int64
-	rsc           chan interface{}
-	rss           []*receiveStatus
-	rs            *receiveStatus
-	seq           int64
-	startHeight   int64
+	l           log.Logger
+	src         link.ChainConfig
+	dst         types.BtpAddress
+	c           *client.Client
+	db          *leveldb.DB
+	nid         int64
+	rsc         chan interface{}
+	rss         []*receiveStatus
+	rs          *receiveStatus
+	seq         int64
+	startHeight int64
 }
 
 func newBTP2(src link.ChainConfig, dst types.BtpAddress, endpoint string, baseDir string, l log.Logger) (*btp2, error) {
@@ -71,50 +70,99 @@ func newBTP2(src link.ChainConfig, dst types.BtpAddress, endpoint string, baseDi
 		rs:  &receiveStatus{},
 	}
 	c.c = client.NewClient(endpoint, l)
-	bk, err := c.prepareDatabase(baseDir)
+	err := c.prepareDatabase(baseDir)
 	if err != nil {
 		return nil, err
 	}
-	c.bk = bk
 	return c, nil
 }
 
-func (b *btp2) setHeightToDatabase() {
-	bytesArray := big.NewInt(b.receiveHeight).Bytes()
-	b.bk.Set([]byte("ReceiveHeight"), bytesArray)
+func (b *btp2) getFirstHeightForReceiveBlock() int64 {
+	iter := b.db.NewIterator(util.BytesPrefix([]byte(ReceiveBlockPrefix)), nil)
+	if iter.First() {
+		return new(big.Int).SetBytes(iter.Key()[len([]byte(ReceiveBlockPrefix)):]).Int64()
+	}
+	return 0
 }
 
-func (b *btp2) prepareDatabase(baseDir string) (db.Bucket, error) {
+func (b *btp2) addReceiveBlock(height int64, data []byte) error {
+	h := big.NewInt(height)
+	key := append([]byte(ReceiveBlockPrefix), h.Bytes()...)
+	return b.db.Put(key, data, nil)
+}
+
+func (b *btp2) removeAllReceiveBlock() error {
+	b.l.Debugf("removeAllReceiveBlock")
+	iter := b.db.NewIterator(util.BytesPrefix([]byte(ReceiveBlockPrefix)), nil)
+	if iter.Next() {
+		b.l.Debugf("Delete height stored in database (height : %d)",
+			new(big.Int).SetBytes(iter.Key()[len([]byte(ReceiveBlockPrefix)):]).Int64())
+		if err := b.db.Delete(iter.Key(), nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *btp2) removeReceiveBlockByHeight(height int64) error {
+	b.l.Debugf("removeReceiveBlockByHeight (height : %d) ", height)
+	h := big.NewInt(height)
+	key := append([]byte(ReceiveBlockPrefix), h.Bytes()...)
+	iter := b.db.NewIterator(util.BytesPrefix([]byte(ReceiveBlockPrefix)), nil)
+	if iter.Seek(key) {
+		for iter.Prev() {
+			b.l.Debugf("Delete height stored in database (height : %d)",
+				new(big.Int).SetBytes(iter.Key()[len([]byte(ReceiveBlockPrefix)):]).Int64())
+			if err := b.db.Delete(iter.Key(), nil); err != nil {
+				return err
+			}
+		}
+	}
+	return b.db.Delete(key, nil)
+	return nil
+}
+
+func (b *btp2) setLastReceiveHeight(height int64) error {
+	bytesArray := big.NewInt(height).Bytes()
+	return b.db.Put([]byte("LastReceiveHeight"), bytesArray, nil)
+}
+
+func (b *btp2) getLastReceiveHeight() (int64, error) {
+	if has, err := b.db.Has([]byte("LastReceiveHeight"), nil); err != nil {
+		return 0, err
+	} else if has {
+		bytesArray, err := b.db.Get([]byte("LastReceiveHeight"), nil)
+		if err != nil {
+			return 0, err
+		}
+		return new(big.Int).SetBytes(bytesArray).Int64(), nil
+	}
+	return 0, nil
+}
+
+func (b *btp2) deleteAllDatabase() error {
+	b.l.Debugf("deleteAllDatabase")
+	iter := b.db.NewIterator(nil, nil)
+	for iter.Next() {
+		b.db.Delete(iter.Key(), nil)
+	}
+	return nil
+}
+
+func (b *btp2) prepareDatabase(baseDir string) error {
+	var err error
 	dbDir := filepath.Join(baseDir, b.src.GetAddress().NetworkAddress())
 	b.l.Debugln("open database", filepath.Join(dbDir, b.dst.NetworkAddress()))
-	database, err := db.Open(dbDir, string(DefaultDBType), b.dst.NetworkAddress())
+	b.db, err = leveldb.OpenFile(dbDir, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to open database")
+		return errors.Wrap(err, "fail to open database")
 	}
 	defer func() {
 		if err != nil {
-			database.Close()
+			b.db.Close()
 		}
 	}()
-	var bk db.Bucket
-	if bk, err = database.GetBucket("ReceiveHeight"); err != nil {
-		return nil, err
-	}
-	k := []byte("ReceiveHeight")
-	has, err := bk.Has(k)
-	if err != nil {
-		return nil, err
-	}
-
-	if has {
-		h, err := bk.Get(k)
-		if err != nil {
-			return nil, err
-		}
-		b.receiveHeight = new(big.Int).SetBytes(h).Int64()
-		b.l.Debugf("Database has height data (height:%d)", b.receiveHeight)
-	}
-	return bk, nil
+	return nil
 }
 
 func (b *btp2) getNetworkId() error {
@@ -287,6 +335,7 @@ func (b *btp2) FinalizedStatus(blsc <-chan *types.BMCLinkStatus) {
 		for {
 			select {
 			case bls := <-blsc:
+				b.removeReceiveBlockByHeight(bls.Verifier.Height)
 				b.clearReceiveStatus(bls)
 			}
 		}
@@ -343,10 +392,32 @@ func (b *btp2) monitoring(bls *types.BMCLinkStatus) error {
 		return fmt.Errorf("cannot catchup from zero height")
 	}
 
-	if b.receiveHeight > bls.Verifier.Height {
-		height = b.receiveHeight
-	} else {
+	if bls.RxSeq < 1 {
+		if err := b.deleteAllDatabase(); err != nil {
+			return err
+		}
+	}
+
+	lastHeight, err := b.getLastReceiveHeight()
+	if err != nil {
+		return err
+	}
+
+	fb := b.getFirstHeightForReceiveBlock()
+	if bls.Verifier.Height > lastHeight {
+		b.deleteAllDatabase()
 		height = bls.Verifier.Height
+	} else {
+		if fb != 0 && bls.Verifier.Height > fb {
+			height = bls.Verifier.Height
+		} else if fb > bls.Verifier.Height {
+			height = fb - 1
+		} else {
+			height = lastHeight
+		}
+		if err := b.removeAllReceiveBlock(); err != nil {
+			return err
+		}
 	}
 
 	req := &client.BTPRequest{
@@ -371,7 +442,7 @@ func (b *btp2) monitoring(bls *types.BMCLinkStatus) error {
 			height, bls.RxSeq, b.nid, conn.LocalAddr().String())
 	}
 
-	err := b.monitorBTP2Block(req, bls, onConn, onErr)
+	err = b.monitorBTP2Block(req, bls, onConn, onErr)
 	if err != nil {
 		return err
 	}
@@ -390,7 +461,7 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 	}
 
 	if b.rs.Height() == 0 {
-		b.rs.height = bls.Verifier.Height
+		b.rs.height, _ = req.Height.Value()
 		b.rs.seq = bls.RxSeq
 	}
 
@@ -401,8 +472,9 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 		}
 
 		if v.Progress.Value != 0 {
-			b.receiveHeight = v.Progress.Value
-			b.setHeightToDatabase()
+			if err := b.setLastReceiveHeight(v.Progress.Value); err != nil {
+				return err
+			}
 		}
 
 		if len(v.Header) == 0 {
@@ -413,21 +485,33 @@ func (b *btp2) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus
 		if _, err = codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
 			return err
 		}
-		firstMessageSN := bh.UpdateNumber >> 1
-		if firstMessageSN == b.seq && bh.MainHeight != b.startHeight {
-			msgs, err := b.c.GetBTPMessage(bh.MainHeight, b.nid)
-			if err != nil {
+
+		if bh.MainHeight != b.startHeight {
+
+			if bh.MessageCount != 0 {
+				msgs, err := b.c.GetBTPMessage(bh.MainHeight, b.nid)
+				if err != nil {
+					return err
+				}
+
+				messageSN := bh.UpdateNumber >> 1
+				if messageSN != b.seq {
+					return fmt.Errorf("invalid seq (UpdateNumber:%d, Seq:%d)", bh.UpdateNumber, b.seq)
+				}
+				b.seq += int64(len(msgs))
+			}
+
+			if err := b.addReceiveBlock(bh.MainHeight, h); err != nil {
 				return err
 			}
 
-			b.seq += int64(len(msgs))
 			rs, err := newReceiveStatus(bh.MainHeight, b.seq)
 			if err != nil {
 				return err
 			}
 			b.rs = rs
 			b.rss = append(b.rss, rs)
-			b.l.Debugf("monitor info : Height:%d  UpdateNumber:%d  MessageCnt:%d  Seq:%d ", bh.MainHeight, bh.UpdateNumber, len(msgs), b.seq)
+			b.l.Debugf("monitor info : Height:%d  UpdateNumber:%d  MessageCnt:%d  Seq:%d ", bh.MainHeight, bh.UpdateNumber, bh.MessageCount, b.seq)
 			b.rsc <- rs
 		}
 

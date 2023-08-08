@@ -16,6 +16,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
 
 	"github.com/icon-project/btp2/chain/ethbr/binding"
 	"github.com/icon-project/btp2/chain/ethbr/client"
@@ -25,6 +27,10 @@ import (
 	"github.com/icon-project/btp2/common/link"
 	"github.com/icon-project/btp2/common/log"
 	btpTypes "github.com/icon-project/btp2/common/types"
+)
+
+const (
+	ReceiveBlockPrefix = "H|"
 )
 
 type receiveStatus struct {
@@ -72,11 +78,10 @@ type ethbr struct {
 	nid           int64
 	rsc           chan interface{}
 	rss           []*receiveStatus
-	rs            *receiveStatus
 	seq           int64
 	startHeight   int64
 	receiveHeight int64
-	bk            db.Bucket
+	db            *leveldb.DB
 	opt           struct {
 		StartHeight int64
 	}
@@ -90,7 +95,6 @@ func newEthBridge(src link.ChainConfig, dst btpTypes.BtpAddress, endpoint string
 		l:   l,
 		rsc: make(chan interface{}),
 		rss: make([]*receiveStatus, 0),
-		rs:  &receiveStatus{},
 	}
 	c.c = client.NewClient(endpoint, l)
 	b, err := json.Marshal(opt)
@@ -102,50 +106,98 @@ func newEthBridge(src link.ChainConfig, dst btpTypes.BtpAddress, endpoint string
 		l.Panicf("fail to unmarshal opt:%#v err:%+v", opt, err)
 	}
 
-	bk, err := c.prepareDatabase(baseDir)
+	err = c.prepareDatabase(baseDir)
 	if err != nil {
 		return nil, err
 	}
-	c.bk = bk
 	return c, nil
 }
 
-func (e *ethbr) setHeightToDatabase() {
-	bytesArray := big.NewInt(e.receiveHeight).Bytes()
-	e.bk.Set([]byte("ReceiveHeight"), bytesArray)
+func (e *ethbr) getFirstHeightForReceiveBlock() int64 {
+	iter := e.db.NewIterator(util.BytesPrefix([]byte(ReceiveBlockPrefix)), nil)
+	if iter.First() {
+		return new(big.Int).SetBytes(iter.Key()[len([]byte(ReceiveBlockPrefix)):]).Int64()
+	}
+	return 0
 }
 
-func (e *ethbr) prepareDatabase(baseDir string) (db.Bucket, error) {
+func (e *ethbr) addBTPBlockDatabase(height int64, data []byte) error {
+	h := big.NewInt(height)
+	key := append([]byte(ReceiveBlockPrefix), h.Bytes()...)
+	return e.db.Put(key, data, nil)
+}
+
+func (e *ethbr) removeAllReceiveBlock() error {
+	e.l.Debugf("removeAllReceiveBlock")
+	iter := e.db.NewIterator(util.BytesPrefix([]byte(ReceiveBlockPrefix)), nil)
+	if iter.Next() {
+		e.l.Debugf("Delete height stored in database (height : %d)",
+			new(big.Int).SetBytes(iter.Key()[len([]byte(ReceiveBlockPrefix)):]).Int64())
+		if err := e.db.Delete(iter.Key(), nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (e *ethbr) removeReceiveBlockByHeight(height int64) error {
+
+	h := big.NewInt(height)
+	key := append([]byte(ReceiveBlockPrefix), h.Bytes()...)
+	iter := e.db.NewIterator(util.BytesPrefix([]byte(ReceiveBlockPrefix)), nil)
+	if iter.Seek(key) {
+		for iter.Prev() {
+			e.l.Debugf("Delete height stored in database (height : %d)",
+				new(big.Int).SetBytes(iter.Key()[len([]byte(ReceiveBlockPrefix)):]).Int64())
+			if err := e.db.Delete(iter.Key(), nil); err != nil {
+				return err
+			}
+		}
+	}
+	return e.db.Delete(key, nil)
+}
+
+func (e *ethbr) setLastReceiveHeight(height int64) error {
+	bytesArray := big.NewInt(height).Bytes()
+	return e.db.Put([]byte("LastReceiveHeight"), bytesArray, nil)
+}
+
+func (e *ethbr) getLastReceiveHeight() (int64, error) {
+	if has, err := e.db.Has([]byte("LastReceiveHeight"), nil); err != nil {
+		return 0, err
+	} else if has {
+		bytesArray, err := e.db.Get([]byte("LastReceiveHeight"), nil)
+		if err != nil {
+			return 0, err
+		}
+		return new(big.Int).SetBytes(bytesArray).Int64(), nil
+	}
+	return 0, nil
+}
+
+func (e *ethbr) deleteAllDatabase() error {
+	e.l.Debugf("deleteAllDatabase")
+	iter := e.db.NewIterator(nil, nil)
+	for iter.Next() {
+		e.db.Delete(iter.Key(), nil)
+	}
+	return nil
+}
+
+func (e *ethbr) prepareDatabase(baseDir string) error {
+	var err error
 	dbDir := filepath.Join(baseDir, e.src.GetAddress().NetworkAddress())
 	e.l.Debugln("open database", filepath.Join(dbDir, e.dst.NetworkAddress()))
-	database, err := db.Open(dbDir, string(DefaultDBType), e.dst.NetworkAddress())
+	e.db, err = leveldb.OpenFile(dbDir, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "fail to open database")
+		return errors.Wrap(err, "fail to open database")
 	}
 	defer func() {
 		if err != nil {
-			database.Close()
+			e.db.Close()
 		}
 	}()
-	var bk db.Bucket
-	if bk, err = database.GetBucket("ReceiveHeight"); err != nil {
-		return nil, err
-	}
-	k := []byte("ReceiveHeight")
-	has, err := bk.Has(k)
-	if err != nil {
-		return nil, err
-	}
-
-	if has {
-		h, err := bk.Get(k)
-		if err != nil {
-			return nil, err
-		}
-		e.receiveHeight = new(big.Int).SetBytes(h).Int64()
-		e.l.Debugf("Database has height data (height:%d)", e.receiveHeight)
-	}
-	return bk, nil
+	return nil
 }
 
 func (e *ethbr) Start(bls *btpTypes.BMCLinkStatus) (<-chan interface{}, error) {
@@ -261,6 +313,7 @@ func (e *ethbr) FinalizedStatus(blsc <-chan *btpTypes.BMCLinkStatus) {
 		for {
 			select {
 			case bls := <-blsc:
+				e.removeReceiveBlockByHeight(bls.Verifier.Height)
 				e.clearReceiveStatus(bls)
 			}
 		}
@@ -298,16 +351,40 @@ func (e *ethbr) monitoring(bls *btpTypes.BMCLinkStatus) error {
 		},
 	}
 
-	if e.receiveHeight > bls.Verifier.Height {
-		height = e.receiveHeight
-	} else {
+	if bls.RxSeq < 1 {
+		if err := e.deleteAllDatabase(); err != nil {
+			return err
+		}
+	}
+
+	lastHeight, err := e.getLastReceiveHeight()
+	if err != nil {
+		return err
+	}
+
+	fb := e.getFirstHeightForReceiveBlock()
+	if bls.Verifier.Height > lastHeight {
+		if err := e.deleteAllDatabase(); err != nil {
+			return err
+		}
 		height = bls.Verifier.Height
+	} else {
+		if fb != 0 && bls.Verifier.Height > fb {
+			height = bls.Verifier.Height
+		} else if fb > bls.Verifier.Height {
+			height = fb - 1
+		} else {
+			height = lastHeight
+		}
+		if err := e.removeAllReceiveBlock(); err != nil {
+			return err
+		}
 	}
 
 	e.l.Debugf("ReceiveLoop height:%d seq:%d filterQuery[Address:%s,Topic:%s]",
 		height, bls.RxSeq, fq.Addresses[0].String(), fq.Topics[0][0].Hex())
 	br := &client.BlockRequest{
-		Height:      big.NewInt(height),
+		Height:      big.NewInt(height + 1),
 		FilterQuery: fq,
 	}
 
@@ -330,7 +407,9 @@ func (e *ethbr) monitoring(bls *btpTypes.BMCLinkStatus) error {
 		func(v *client.BlockNotification) error {
 			e.receiveHeight = v.Height.Int64()
 			if v.Height.Int64()%500 == 0 {
-				e.setHeightToDatabase()
+				if err := e.setLastReceiveHeight(v.Height.Int64()); err != nil {
+					return err
+				}
 			}
 			if len(v.Logs) > 0 {
 				var startSeq int64
