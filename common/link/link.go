@@ -171,7 +171,7 @@ func (l *Link) startSenderChannel(errCh chan error) error {
 }
 
 func (l *Link) buildRelayMessage() error {
-	l.l.Debugf("BuildRelayMessage (bls height:%d, bls rx seq:%d)", l.bls.Verifier.Height, l.bls.RxSeq)
+	l.l.Debugf("BuildRelayMessage (bls height:%d, bls rxSeq:%d)", l.bls.Verifier.Height, l.bls.RxSeq)
 	if len(l.rmi.rmis) == 0 {
 		l.resetRelayMessageItem()
 	}
@@ -229,6 +229,7 @@ func (l *Link) sendRelayMessage() error {
 					l.relayState = PENDING
 					return nil
 				} else {
+					l.l.Debugf("Failed to send message (err=%+v)", err)
 					return err
 				}
 			} else {
@@ -334,7 +335,7 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 }
 
 func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
-	l.l.Debugf("BuildProof (bls height:%d, bls rx seq:%d)", l.bls.Verifier.Height, l.bls.RxSeq)
+	l.l.Debugf("BuildProof (bls height:%d, bls rxSeq:%d)", l.bls.Verifier.Height, l.bls.RxSeq)
 	var mpLen int64
 	rs := l.getReceiveStatusForHeight(l.bls.Verifier.Height)
 	if rs == nil {
