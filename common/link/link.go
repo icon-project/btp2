@@ -184,7 +184,6 @@ func (l *Link) buildRelayMessage() error {
 
 	if len(bus) != 0 {
 		for _, bu := range bus {
-			//TODO check height for block update
 			l.appendRelayMessageItem(bu)
 			if err := bu.UpdateBMCLinkStatus(l.bls); err != nil {
 				return err
