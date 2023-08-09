@@ -395,12 +395,6 @@ func (e *ethbr) monitoring(bls *btpTypes.BMCLinkStatus) error {
 	errCb := func(height int64, err error) {
 		e.l.Debugf("onError err:%+v", err)
 		e.c.CloseMonitor()
-		//Restart Monitoring
-		ls := &btpTypes.BMCLinkStatus{}
-		ls.RxSeq = e.seq
-		ls.Verifier.Height = height
-		e.l.Debugf("Restart Monitoring")
-		e.monitoring(ls)
 	}
 
 	return e.c.MonitorBlock(br,
