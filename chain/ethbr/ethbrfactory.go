@@ -40,7 +40,7 @@ func NewReceiver(srcCfg link.ChainConfig, dstAddr types.BtpAddress, baseDir stri
 	return newEthBridge(srcCfg, dstAddr, src.Endpoint, l, baseDir, src.Options)
 }
 
-func NewSender(srcAddr types.BtpAddress, dstCfg link.ChainConfig, l log.Logger) (types.Sender, error) {
+func NewSender(srcAddr types.BtpAddress, dstCfg link.ChainConfig, baseDir string, l log.Logger) (types.Sender, error) {
 	dst := dstCfg.(chain.BaseConfig)
 	w, err := newWallet(dst.KeyStorePass, dst.KeySecret, dst.KeyStore)
 	if err != nil {

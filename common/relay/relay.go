@@ -70,12 +70,12 @@ func newLinkFactory(srcRaw, dstRaw json.RawMessage, relayCfg RelayConfig, modLev
 		return nil, err
 	}
 
-	l, err := link.CreateLink(srcRaw, dstRaw, logger, relayCfg.BaseDir)
+	l, err := link.CreateLink(srcRaw, dstRaw, relayCfg.BaseDir, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := link.CreateSender(srcRaw, dstRaw, logger)
+	s, err := link.CreateSender(srcRaw, dstRaw, relayCfg.BaseDir, logger)
 	if err != nil {
 		return nil, err
 	}

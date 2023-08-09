@@ -14,7 +14,7 @@ type Factory struct {
 	ParseChainConfig func(raw json.RawMessage) (ChainConfig, error)
 	NewReceiver      func(srcCfg ChainConfig, dstAddr types.BtpAddress, baseDir string, l log.Logger) (Receiver, error)
 	NewLink          func(srcCfg ChainConfig, dstAddr types.BtpAddress, baseDir string, l log.Logger) (types.Link, error)
-	NewSender        func(srcAddr types.BtpAddress, dstCfg ChainConfig, l log.Logger) (types.Sender, error)
+	NewSender        func(srcAddr types.BtpAddress, dstCfg ChainConfig, baseDir string, l log.Logger) (types.Sender, error)
 }
 
 var factories = map[string]*Factory{}
@@ -29,7 +29,7 @@ func RegisterFactory(f *Factory) {
 	factories[f.Type] = f
 }
 
-func CreateLink(srcRaw, dstRaw json.RawMessage, l log.Logger, baseDir string) (types.Link, error) {
+func CreateLink(srcRaw, dstRaw json.RawMessage, baseDir string, l log.Logger) (types.Link, error) {
 
 	var srcCfgCommon ChainConfigCommon
 	if err := json.Unmarshal(srcRaw, &srcCfgCommon); err != nil {
@@ -66,7 +66,7 @@ func CreateLink(srcRaw, dstRaw json.RawMessage, l log.Logger, baseDir string) (t
 	}
 }
 
-func CreateSender(srcRaw, dstRaw json.RawMessage, l log.Logger) (types.Sender, error) {
+func CreateSender(srcRaw, dstRaw json.RawMessage, baseDir string, l log.Logger) (types.Sender, error) {
 	var srcCfgCommon ChainConfigCommon
 	if err := json.Unmarshal(srcRaw, &srcCfgCommon); err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func CreateSender(srcRaw, dstRaw json.RawMessage, l log.Logger) (types.Sender, e
 			return nil, err
 		}
 
-		return f.NewSender(srcCfgCommon.GetAddress(), dstCfg, l)
+		return f.NewSender(srcCfgCommon.GetAddress(), dstCfg, baseDir, l)
 	} else {
 		return nil, errors.NotFoundError.Errorf("UnknownSourceType(type=%s)", dstType)
 	}
