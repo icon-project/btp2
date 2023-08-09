@@ -96,7 +96,7 @@ func (r *Relay) Start() error {
 		select {
 		case err := <-linkErrCh:
 			if err != nil {
-				fmt.Errorf("relay err=%+v", err)
+				fmt.Printf("Relay error : %+v", err)
 				return err
 			}
 		}

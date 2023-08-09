@@ -1,6 +1,7 @@
 package link
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 
@@ -146,6 +147,8 @@ func (l *Link) startReceiverChannel(errCh chan error) error {
 					}
 				case error:
 					errCh <- t
+				default:
+					errCh <- fmt.Errorf("illegal Receiver channel type")
 				}
 			}
 		}
@@ -332,7 +335,9 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 	}
 
 	if l.rmi.size > 0 {
-		l.appendRelayMessage()
+		if err := l.appendRelayMessage(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -356,7 +361,9 @@ func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
 
 		if mp == nil || mp.Len() == 0 {
 			if len(l.rmi.rmis) != 0 {
-				l.appendRelayMessage()
+				if err := l.appendRelayMessage(); err != nil {
+					return 0, err
+				}
 				continue
 			} else {
 				return 0, nil
@@ -365,7 +372,9 @@ func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
 
 		mpLen += mp.Len()
 		if l.isOverLimit(l.rmi.size) {
-			l.appendRelayMessage()
+			if err := l.appendRelayMessage(); err != nil {
+				return 0, err
+			}
 			bp, err := l.buildBlockProof(l.bls)
 			if err != nil {
 				return 0, err

@@ -581,7 +581,7 @@ func (c *Client) wsReadJSONLoop(conn *websocket.Conn, respPtr interface{}, cb ws
 		ptr := v.Interface()
 		if _, ok := c.conns[conn.LocalAddr().String()]; !ok {
 			c.l.Debugf("wsReadJSONLoop c.conns[%s] is nil", conn.LocalAddr().String())
-			return nil
+			return fmt.Errorf("wsReadJSONLoop c.conns[%s] is nil", conn.LocalAddr().String())
 		}
 		if err := c.wsRead(conn, ptr); err != nil {
 			c.l.Debugf("wsReadJSONLoop c.conns[%s] ReadJSON err:%+v", conn.LocalAddr().String(), err)
