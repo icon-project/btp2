@@ -187,7 +187,7 @@ func (e *ethbr) deleteAllDatabase() error {
 func (e *ethbr) prepareDatabase(baseDir string) error {
 	var err error
 	dbDir := filepath.Join(baseDir, e.src.GetAddress().NetworkAddress())
-	e.l.Debugln("open database", filepath.Join(dbDir, e.dst.NetworkAddress()))
+	e.l.Debugln("open database", dbDir)
 	e.db, err = leveldb.OpenFile(dbDir, nil)
 	if err != nil {
 		return errors.Wrap(err, "fail to open database")

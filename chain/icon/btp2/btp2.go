@@ -150,7 +150,7 @@ func (b *btp2) deleteAllDatabase() error {
 func (b *btp2) prepareDatabase(baseDir string) error {
 	var err error
 	dbDir := filepath.Join(baseDir, b.src.GetAddress().NetworkAddress())
-	b.l.Debugln("open database", filepath.Join(dbDir, b.dst.NetworkAddress()))
+	b.l.Debugln("open database", dbDir)
 	b.db, err = leveldb.OpenFile(dbDir, nil)
 	if err != nil {
 		return errors.Wrap(err, "fail to open database")
