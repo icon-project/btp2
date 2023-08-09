@@ -126,7 +126,8 @@ func (l *Link) startReceiverChannel(errCh chan error) error {
 				case ReceiveStatus:
 					rs := t.(ReceiveStatus)
 					l.rss = append(l.rss, t)
-					l.l.Debugf("ReceiveStatus (height:%d, seq:%d)", rs.Height(), rs.Seq())
+					l.l.Debugf("ReceiveStatus : height:%d, ReceiveStatus seq:%d, BMCLinkStatus height:%d, rxSeq:%d)",
+						rs.Height(), rs.Seq(), l.bls.Verifier.Height, l.bls.RxSeq)
 					once.Do(func() {
 						if err = l.handleUndeliveredRelayMessage(); err != nil {
 							errCh <- err
@@ -275,6 +276,8 @@ func (l *Link) appendRelayMessage() error {
 func (l *Link) handleRelayMessage() error {
 	l.rmsMtx.Lock()
 	defer l.rmsMtx.Unlock()
+	l.l.Debugf("handleRelayMessage (relay status:%d)", l.relayState)
+
 	if l.relayState == RUNNING {
 		if err := l.sendRelayMessage(); err != nil {
 			return err
