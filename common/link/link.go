@@ -551,7 +551,9 @@ func (l *Link) result(rr *types.RelayResult) error {
 			if rr.Finalized != true {
 				l.relayState = PENDING
 			} else {
-				l.updateBMCLinkStatus()
+				if err := l.updateBMCLinkStatus(); err != nil {
+					return err
+				}
 				l.removeAllRelayMessage()
 				l.relayState = RUNNING
 				if err := l.handleRelayMessage(); err != nil {
@@ -562,7 +564,9 @@ func (l *Link) result(rr *types.RelayResult) error {
 			if rr.Finalized != true {
 				l.relayState = PENDING
 			} else {
-				l.updateBMCLinkStatus()
+				if err := l.updateBMCLinkStatus(); err != nil {
+					return err
+				}
 				l.relayState = RUNNING
 				index := l.removeRelayMessage(l.bls)
 				if index == 0 {
