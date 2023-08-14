@@ -280,7 +280,7 @@ func ViperDecodeOptJson(c *mapstructure.DecoderConfig) {
 					return json.Marshal(input)
 				} else if inputValType.Kind() == reflect.String {
 					if input != "" {
-						return ioutil.ReadFile(input.(string))
+						return os.ReadFile(input.(string))
 					} else {
 						return json.RawMessage(nil), nil
 					}
@@ -785,4 +785,21 @@ func OnInterrupt(cb func()) {
 		<-ch
 		cb()
 	}()
+}
+
+func ReadJSONObject(s string) ([]byte, error) {
+	if len(s) == 0 {
+		return nil, nil
+	}
+	var bs []byte
+	var err error
+	if strings.HasPrefix(s, "@") {
+		bs, err = os.ReadFile(s[1:])
+	} else {
+		bs = []byte(s)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return bs, nil
 }

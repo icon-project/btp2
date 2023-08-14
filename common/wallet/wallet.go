@@ -5,13 +5,6 @@ import (
 	"github.com/icon-project/btp2/common/crypto"
 )
 
-type Wallet interface {
-	Address() string
-	Sign(data []byte) ([]byte, error)
-	PublicKey() []byte
-	ECDH(pubKey []byte) ([]byte, error)
-}
-
 type softwareWallet struct {
 	skey *crypto.PrivateKey
 	pkey *crypto.PublicKey
@@ -21,8 +14,8 @@ func (w *softwareWallet) Address() string {
 	return common.NewAccountAddressFromPublicKey(w.pkey).String()
 }
 
-func (w *softwareWallet) Sign(data []byte) ([]byte, error) {
-	sig, err := crypto.NewSignature(data, w.skey)
+func (w *softwareWallet) Sign(data interface{}) ([]byte, error) {
+	sig, err := crypto.NewSignature(data.([]byte), w.skey)
 	if err != nil {
 		return nil, err
 	}
@@ -31,6 +24,10 @@ func (w *softwareWallet) Sign(data []byte) ([]byte, error) {
 
 func (w *softwareWallet) PublicKey() []byte {
 	return w.pkey.SerializeCompressed()
+}
+
+func (w *softwareWallet) PrivateKey() interface{} {
+	return w.skey.Bytes()
 }
 
 func (w *softwareWallet) ECDH(pubKey []byte) ([]byte, error) {

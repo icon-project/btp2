@@ -219,7 +219,7 @@ async function checkCallMessage(dst: string, srcChain: any, dstChain: any, sn: B
 async function invokeExecuteCall(dst: string, dstChain: any, reqId: BigNumber, data: string) {
   if (isEVMChain(dstChain)) {
     const xcallDst = await ethers.getContractAt('CallService', dstChain.contracts.xcall);
-    return await xcallDst.executeCall(reqId, data, {gasLimit: 300000})
+    return await xcallDst.executeCall(reqId, data, {gasLimit: 600000})
       .then((tx) => tx.wait(1))
       .then((receipt) => {
         if (receipt.status != 1) {
@@ -376,7 +376,7 @@ async function checkRollbackMessage(src: string, srcChain: any, blockNum: number
 async function invokeExecuteRollback(src: string, srcChain: any, sn: BigNumber) {
   if (isEVMChain(srcChain)) {
     const xcallSrc = await ethers.getContractAt('CallService', srcChain.contracts.xcall);
-    return await xcallSrc.executeRollback(sn, {gasLimit: 300000})
+    return await xcallSrc.executeRollback(sn, {gasLimit: 600000})
       .then((tx) => tx.wait(1))
       .then((receipt) => {
         if (receipt.status != 1) {

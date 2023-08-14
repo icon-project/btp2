@@ -36,11 +36,11 @@ func (r *receiveStatus) ReceiptProof() *ReceiptProof {
 
 type bridge struct {
 	l           log.Logger
-	src         types.BtpAddress
+	src         link.ChainConfig
 	dst         types.BtpAddress
 	c           *client.Client
 	nid         int64
-	rsc         chan link.ReceiveStatus
+	rsc         chan interface{}
 	rss         []*receiveStatus
 	rs          *receiveStatus
 	startHeight int64
@@ -73,22 +73,22 @@ func newReceiveStatus(height, rxSeq int64, sn int64, msgs []string, next types.B
 	}, nil
 }
 
-func NewBridge(src, dst types.BtpAddress, endpoint string, l log.Logger) *bridge {
+func newBridge(src link.ChainConfig, dst types.BtpAddress, endpoint string, baseDir string, l log.Logger) (*bridge, error) {
 	c := &bridge{
 		src: src,
 		dst: dst,
 		l:   l,
-		rsc: make(chan link.ReceiveStatus),
+		rsc: make(chan interface{}),
 		rss: make([]*receiveStatus, 0),
 		rs:  &receiveStatus{},
 	}
 	c.c = client.NewClient(endpoint, l)
-	return c
+	return c, nil
 }
 
 func (b *bridge) getNetworkId() error {
 	if b.nid == 0 {
-		nid, err := b.c.GetBTPLinkNetworkId(b.src, b.dst)
+		nid, err := b.c.GetBTPLinkNetworkId(b.src.GetAddress(), b.dst)
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ func (b *bridge) getNetworkId() error {
 	return nil
 }
 
-func (b *bridge) Start(bs *types.BMCLinkStatus) (<-chan link.ReceiveStatus, error) {
+func (b *bridge) Start(bls *types.BMCLinkStatus) (<-chan interface{}, error) {
 	if err := b.getNetworkId(); err != nil {
 		return nil, err
 	}
@@ -108,7 +108,9 @@ func (b *bridge) Start(bs *types.BMCLinkStatus) (<-chan link.ReceiveStatus, erro
 	}
 
 	go func() {
-		b.Monitoring(bs) //TODO error handling
+		err := b.monitoring(bls)
+		b.l.Debugf("Unknown monitoring error occurred  (err : %v)", err)
+		b.rsc <- err
 	}()
 
 	return b.rsc, nil
@@ -123,7 +125,7 @@ func (b *bridge) GetStatus() (link.ReceiveStatus, error) {
 }
 
 func (b *bridge) GetHeightForSeq(seq int64) int64 {
-	rs := b.GetReceiveStatusForSequence(seq)
+	rs := b.getReceiveStatusForSequence(seq)
 	if rs != nil {
 		return rs.height
 	} else {
@@ -132,9 +134,10 @@ func (b *bridge) GetHeightForSeq(seq int64) int64 {
 }
 
 func (b *bridge) BuildBlockUpdate(bls *types.BMCLinkStatus, limit int64) ([]link.BlockUpdate, error) {
+	b.l.Debugf("Build BlockUpdate (height=%d, rxSeq=%d)", bls.Verifier.Height, bls.RxSeq)
 	bus := make([]link.BlockUpdate, 0)
 	rs := b.nextReceiveStatus(bls)
-	bu := NewBlockUpdate(bls, rs.Height())
+	bu := newBlockUpdate(bls, rs.Height())
 	bus = append(bus, bu)
 	return bus, nil
 }
@@ -144,8 +147,9 @@ func (b *bridge) BuildBlockProof(bls *types.BMCLinkStatus, height int64) (link.B
 }
 
 func (b *bridge) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.MessageProof, error) {
+	b.l.Debugf("Build BuildMessageProof (height=%d, rxSeq=%d)", bls.Verifier.Height, bls.RxSeq)
 	var rmSize int
-	rs := b.GetReceiveStatusForSequence(bls.RxSeq + 1)
+	rs := b.getReceiveStatusForSequence(bls.RxSeq + 1)
 	if rs == nil {
 		return nil, nil
 	}
@@ -161,14 +165,14 @@ func (b *bridge) BuildMessageProof(bls *types.BMCLinkStatus, limit int64) (link.
 	for i := offset; i < int64(messageCnt); i++ {
 		size := sizeOfEvent(rs.ReceiptProof().Events[i])
 		if limit < int64(rmSize+size) {
-			return NewMessageProof(bls, bls.RxSeq+i, trp)
+			return newMessageProof(bls, bls.RxSeq+i, trp)
 		}
 		trp.Events = append(trp.Events, rs.ReceiptProof().Events[i])
 		rmSize += size
 	}
 
 	//last event
-	return NewMessageProof(bls, bls.RxSeq+int64(messageCnt), trp)
+	return newMessageProof(bls, bls.RxSeq+int64(messageCnt), trp)
 
 }
 
@@ -177,7 +181,7 @@ func (b *bridge) BuildRelayMessage(rmis []link.RelayMessageItem) ([]byte, error)
 	for _, rmi := range rmis {
 		if rmi.Type() == link.TypeMessageProof {
 			mp := rmi.(*MessageProof)
-			b.l.Debugf("BuildRelayMessage height:%d data:%s ", mp.nextBls.Verifier.Height,
+			b.l.Debugf("BuildRelayMessage (height:%d, data:%s ", mp.nextBls.Verifier.Height,
 				base64.URLEncoding.EncodeToString(mp.Bytes()))
 
 			return mp.Bytes(), nil
@@ -197,24 +201,13 @@ func (b *bridge) FinalizedStatus(blsc <-chan *types.BMCLinkStatus) {
 	}()
 }
 
-// TODO Refactoring reduplication func
-func (b *bridge) getBtpMessage(height int64) ([]string, error) {
-	pr := &client.BTPBlockParam{Height: client.HexInt(intconv.FormatInt(height)), NetworkId: client.HexInt(intconv.FormatInt(b.nid))}
-	mgs, err := b.c.GetBTPMessage(pr)
-	if err != nil {
-		return nil, err
-	}
-
-	return mgs, nil
-}
-
-func (b *bridge) Monitoring(bs *types.BMCLinkStatus) error {
-	if bs.Verifier.Height < 1 {
+func (b *bridge) monitoring(bls *types.BMCLinkStatus) error {
+	if bls.Verifier.Height < 1 {
 		return fmt.Errorf("cannot catchup from zero height")
 	}
 
 	req := &client.BTPRequest{
-		Height:    client.NewHexInt(bs.Verifier.Height),
+		Height:    client.NewHexInt(bls.Verifier.Height),
 		NetworkID: client.NewHexInt(b.nid),
 		ProofFlag: client.NewHexInt(0),
 	}
@@ -224,17 +217,17 @@ func (b *bridge) Monitoring(bs *types.BMCLinkStatus) error {
 		b.c.CloseMonitor(conn)
 		//Restart Monitoring
 		ls := &types.BMCLinkStatus{}
-		ls.TxSeq = b.rs.Seq()
+		ls.RxSeq = b.rs.Seq()
 		ls.Verifier.Height = b.rs.Height()
 		b.l.Debugf("Restart Monitoring")
-		b.Monitoring(ls)
+		b.monitoring(ls)
 	}
 	onConn := func(conn *websocket.Conn) {
 		b.l.Debugf("ReceiveLoop monitorBTP2Block height:%d seq:%d networkId:%d connected %s",
-			bs.Verifier.Height, bs.TxSeq, b.nid, conn.LocalAddr().String())
+			bls.Verifier.Height, bls.RxSeq, b.nid, conn.LocalAddr().String())
 	}
 
-	err := b.monitorBTP2Block(req, bs, onConn, onErr)
+	err := b.monitorBTP2Block(req, bls, onConn, onErr)
 	if err != nil {
 		return err
 	}
@@ -242,7 +235,7 @@ func (b *bridge) Monitoring(bs *types.BMCLinkStatus) error {
 }
 
 func (b *bridge) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStatus, scb func(conn *websocket.Conn), errCb func(*websocket.Conn, error)) error {
-	offset, err := b.c.GetBTPLinkOffset(b.src, b.dst)
+	offset, err := b.c.GetBTPLinkOffset(b.src.GetAddress(), b.dst)
 	if err != nil {
 		return err
 	}
@@ -264,8 +257,9 @@ func (b *bridge) monitorBTP2Block(req *client.BTPRequest, bls *types.BMCLinkStat
 		if _, err = codec.RLP.UnmarshalFromBytes(h, bh); err != nil {
 			return err
 		}
+
 		if bh.MainHeight != b.startHeight {
-			msgs, err := b.getBtpMessage(bh.MainHeight)
+			msgs, err := b.c.GetBTPMessage(bh.MainHeight, b.nid)
 			if err != nil {
 				return err
 			}
@@ -307,7 +301,7 @@ func (b *bridge) clearReceiveStatus(bls *types.BMCLinkStatus) {
 	}
 }
 
-func (b *bridge) GetReceiveStatusForSequence(seq int64) *receiveStatus {
+func (b *bridge) getReceiveStatusForSequence(seq int64) *receiveStatus {
 	for _, rs := range b.rss {
 		if rs.Seq() <= seq && seq <= rs.Seq() {
 			return rs

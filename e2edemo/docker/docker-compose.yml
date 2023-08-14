@@ -7,13 +7,11 @@ services:
     volumes:
       - ./hardhat/logs:/app/logs
     command: /bin/sh -c "/app/node_modules/.bin/hardhat --config hardhat.config.js node 2>&1 | tee /app/logs/hardhat.log"
-  icon-node:
-    image: iconloop/goloop-icon:v1.3.7
-    container_name: "icon-node"
+  icon0:
+    image: iconloop/goloop-icon:v1.3.8
+    container_name: "icon-node0"
     environment:
       GOLOOP_LOG_LEVEL: "trace"
-      GOLOOP_RPC_ADDR: ":9080"
-      GOLOOP_P2P_LISTEN: ":7080"
       ICON_CONFIG: "/goloop/config/icon_config.json"
     cap_add:
       - SYS_TIME
@@ -24,4 +22,20 @@ services:
       - ./icon/config:/goloop/config
       - ./icon/data:/goloop/data
       - ./icon/logs:/goloop/logs
+    command: /bin/sh -c /goloop/config/start.sh
+  icon1:
+    image: iconloop/goloop-icon:v1.3.8
+    container_name: "icon-node1"
+    environment:
+      GOLOOP_LOG_LEVEL: "trace"
+      ICON_CONFIG: "/goloop/config/icon_config.json"
+    cap_add:
+      - SYS_TIME
+    ports:
+      - 9180:9080
+      - 7180:7080
+    volumes:
+      - ./icon1/config:/goloop/config
+      - ./icon1/data:/goloop/data
+      - ./icon1/logs:/goloop/logs
     command: /bin/sh -c /goloop/config/start.sh

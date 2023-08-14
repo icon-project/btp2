@@ -2,9 +2,8 @@
 pragma solidity >=0.8.0;
 pragma abicoder v2;
 
-import "../xcall/interfaces/ICallService.sol";
-import "../xcall/interfaces/ICallServiceReceiver.sol";
-
+import "@iconfoundation/btp2-solidity-library/contracts/interfaces/ICallService.sol";
+import "@iconfoundation/btp2-solidity-library/contracts/interfaces/ICallServiceReceiver.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 contract DAppProxySample is ICallServiceReceiver, Initializable {

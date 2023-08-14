@@ -76,7 +76,7 @@ func (c *blockProof) ProofHeight() int64 {
 	return c.ph
 }
 
-func NewBlockUpdate(bs *types.BMCLinkStatus, targetHeight int64) *blockUpdate {
+func newBlockUpdate(bs *types.BMCLinkStatus, targetHeight int64) *blockUpdate {
 	nextBls := &types.BMCLinkStatus{}
 	nextBls.Verifier.Height = targetHeight
 	nextBls.TxSeq = bs.TxSeq
@@ -108,7 +108,7 @@ func (m *MessageProof) LastSeqNum() int64 {
 	return m.lastSeq
 }
 
-func NewMessageProof(bs *types.BMCLinkStatus, ls int64, rp *ReceiptProof) (*MessageProof, error) {
+func newMessageProof(bs *types.BMCLinkStatus, ls int64, rp *ReceiptProof) (*MessageProof, error) {
 	//update bls
 	nextBls := &types.BMCLinkStatus{}
 	nextBls.Verifier.Height = bs.Verifier.Height

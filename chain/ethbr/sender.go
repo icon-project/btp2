@@ -26,6 +26,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
+	"github.com/icon-project/btp2/chain"
+	"github.com/icon-project/btp2/common/link"
 	btpTypes "github.com/icon-project/btp2/common/types"
 
 	"github.com/icon-project/btp2/chain/ethbr/binding"
@@ -46,21 +48,21 @@ var (
 	txSizeLimit = int(math.Ceil(txMaxDataSize / (1 + txOverheadScale)))
 )
 
-type Queue struct {
+type queue struct {
 	values []*relayMessageTx
 }
 
 type relayMessageTx struct {
-	id     int
+	id     string
 	txHash []byte
 }
 
-func NewQueue() *Queue {
-	queue := &Queue{}
+func newQueue() *queue {
+	queue := &queue{}
 	return queue
 }
 
-func (q *Queue) enqueue(id int, txHash []byte) error {
+func (q *queue) enqueue(id string, txHash []byte) error {
 	if MaxQueueSize <= len(q.values) {
 		return fmt.Errorf("queue full")
 	}
@@ -72,7 +74,7 @@ func (q *Queue) enqueue(id int, txHash []byte) error {
 	return nil
 }
 
-func (q *Queue) dequeue(id int) {
+func (q *queue) dequeue(id string) {
 	for i, rm := range q.values {
 		if rm.id == id {
 			q.values = q.values[i+1:]
@@ -81,36 +83,36 @@ func (q *Queue) dequeue(id int) {
 	}
 }
 
-func (q *Queue) isEmpty() bool {
+func (q *queue) isEmpty() bool {
 	return len(q.values) == 0
 }
 
-func (q *Queue) len() int {
+func (q *queue) len() int {
 	return len(q.values)
 }
 
 type sender struct {
-	c   *client.Client
-	src btpTypes.BtpAddress
-	dst btpTypes.BtpAddress
-	w   client.Wallet
-	l   log.Logger
-	opt struct {
+	c       *client.Client
+	srcAddr btpTypes.BtpAddress
+	dstCfg  chain.BaseConfig
+	w       btpTypes.Wallet
+	l       log.Logger
+	opt     struct {
 	}
 	bmc                *binding.BMC
 	rr                 chan *btpTypes.RelayResult
 	isFoundOffsetBySeq bool
-	queue              *Queue
+	queue              *queue
 }
 
-func NewSender(src, dst btpTypes.BtpAddress, w client.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
+func newSender(srcAddr btpTypes.BtpAddress, dstCfg link.ChainConfig, w btpTypes.Wallet, endpoint string, opt map[string]interface{}, l log.Logger) btpTypes.Sender {
 	s := &sender{
-		src:   src,
-		dst:   dst,
-		w:     w,
-		l:     l,
-		rr:    make(chan *btpTypes.RelayResult),
-		queue: NewQueue(),
+		srcAddr: srcAddr,
+		dstCfg:  dstCfg.(chain.BaseConfig),
+		w:       w,
+		l:       l,
+		rr:      make(chan *btpTypes.RelayResult),
+		queue:   newQueue(),
 	}
 
 	b, err := json.Marshal(opt)
@@ -123,7 +125,7 @@ func NewSender(src, dst btpTypes.BtpAddress, w client.Wallet, endpoint string, o
 
 	s.c = client.NewClient(endpoint, l)
 
-	s.bmc, _ = binding.NewBMC(client.HexToAddress(s.dst.ContractAddress()), s.c.GetEthClient())
+	s.bmc, _ = binding.NewBMC(client.HexToAddress(s.dstCfg.Address.ContractAddress()), s.c.GetEthClient())
 
 	return s
 }
@@ -137,7 +139,7 @@ func (s *sender) Stop() {
 }
 func (s *sender) GetStatus() (*btpTypes.BMCLinkStatus, error) {
 	var status binding.TypesLinkStatus
-	status, err := s.bmc.GetStatus(nil, s.src.String())
+	status, err := s.bmc.GetStatus(nil, s.srcAddr.String())
 	if err != nil {
 		s.l.Errorf("Error retrieving relay status from BMC")
 		return nil, err
@@ -152,19 +154,15 @@ func (s *sender) GetStatus() (*btpTypes.BMCLinkStatus, error) {
 	return ls, nil
 }
 
-func (s *sender) GetMarginForLimit() int64 {
-	return 0
-}
-
-func (s *sender) Relay(rm btpTypes.RelayMessage) (int, error) {
+func (s *sender) Relay(rm btpTypes.RelayMessage) (string, error) {
 	//check send queue
 	if MaxQueueSize <= s.queue.len() {
-		return 0, errors.InvalidStateError.New("pending queue full")
+		return "", errors.InvalidStateError.New("pending queue full")
 	}
 
 	thp, err := s._relay(rm)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	s.queue.enqueue(rm.Id(), thp.Hash.Bytes())
@@ -172,12 +170,12 @@ func (s *sender) Relay(rm btpTypes.RelayMessage) (int, error) {
 	return rm.Id(), nil
 }
 
-func (s *sender) result(id int, txh *client.TransactionHashParam) {
+func (s *sender) result(id string, txh *client.TransactionHashParam) {
 	_, err := s.GetResult(txh)
 	s.queue.dequeue(id)
 
 	if err != nil {
-		s.l.Debugf("result fail rm id : %d , txHash : %v", id, txh.Hash)
+		s.l.Debugf("result fail rm id : %s , txHash : %v", id, txh.Hash)
 
 		if ec, ok := errors.CoderOf(err); ok {
 			s.rr <- &btpTypes.RelayResult{
@@ -187,7 +185,7 @@ func (s *sender) result(id int, txh *client.TransactionHashParam) {
 			}
 		}
 	} else {
-		s.l.Debugf("result success rm id : %d , txHash : %v", id, txh.Hash)
+		s.l.Debugf("result success rm id : %s , txHash : %v", id, txh.Hash)
 		s.rr <- &btpTypes.RelayResult{
 			Id:        id,
 			Err:       -1,
@@ -234,8 +232,15 @@ func (s *sender) GetResult(txh *client.TransactionHashParam) (*types.Receipt, er
 	}
 }
 
-func (s *sender) TxSizeLimit() int {
-	return txSizeLimit
+func (s *sender) GetPreference() btpTypes.Preference {
+	p := btpTypes.Preference{
+		TxSizeLimit:       int64(txSizeLimit),
+		MarginForLimit:    int64(0),
+		LatestResult:      false,
+		FilledBlockUpdate: false,
+	}
+
+	return p
 }
 
 func (s *sender) _relay(rm btpTypes.RelayMessage) (*client.TransactionHashParam, error) {
@@ -247,7 +252,7 @@ func (s *sender) _relay(rm btpTypes.RelayMessage) (*client.TransactionHashParam,
 
 	var tx *types.Transaction
 
-	tx, err = s.bmc.HandleRelayMessage(t, s.src.String(), rm.Bytes()[:])
+	tx, err = s.bmc.HandleRelayMessage(t, s.srcAddr.String(), rm.Bytes()[:])
 	if err != nil {
 		s.l.Errorf("handleRelayMessage error: %s, rm id:%s ", err.Error(), rm.Id())
 		return nil, err
