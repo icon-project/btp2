@@ -125,8 +125,8 @@ func main() {
 	rootPFlags.StringP("config", "c", "", "Parsing configuration file")
 
 	//Chains Config
-	rootPFlags.String("src_config", "", "raw json string or '@<source config file>' for stdin for parameter JSON")
-	rootPFlags.String("dst_config", "", "raw json string or '@<destination config file>'for stdin for parameter JSON")
+	rootPFlags.String("src_config", "", "raw json string or '@<json config file>' for source chain")
+	rootPFlags.String("dst_config", "", "raw json string or '@<json config file>' for destination chain")
 
 	//RelayConfig
 	rootPFlags.String("direction", "reverse", "relay network direction (both,front,reverse)")
