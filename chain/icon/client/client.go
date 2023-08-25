@@ -302,6 +302,14 @@ func (c *Client) GetBlockByHeight(p *BlockHeightParam) (*Block, error) {
 	return result, nil
 }
 
+func (c *Client) GetBlockByHash(p *BlockHashParam) (*Block, error) {
+	result := &Block{}
+	if _, err := c.Do("icx_getBlockByHash", p, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *Client) GetLastBlock() (*Block, error) {
 	result := &Block{}
 	if _, err := c.Do("icx_getLastBlock", nil, &result); err != nil {

@@ -247,6 +247,11 @@ type TransactionHashParam struct {
 type BlockHeightParam struct {
 	Height HexInt `json:"height" validate:"required,t_int"`
 }
+
+type BlockHashParam struct {
+	Hash HexBytes `json:"hash" validate:"required,t_hash"`
+}
+
 type DataHashParam struct {
 	Hash HexBytes `json:"hash" validate:"required,t_hash"`
 }
