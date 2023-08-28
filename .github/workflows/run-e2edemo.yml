@@ -2,6 +2,7 @@ name: Run E2E Demo
 
 on:
   push:
+    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
