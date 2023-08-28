@@ -21,9 +21,9 @@ jobs:
       - name: Setup config for dst chain
         working-directory: ./e2edemo
         run: |
-          TMPFILE=$(tempfile -d .)
+          TMPFILE=$(mktemp -p .)
           jq '.link.dst="${{ matrix.dst-chain }}"' chain_config.json > $TMPFILE
-          mv -f mv $TMPFILE chain_config.json
+          mv -f $TMPFILE chain_config.json
 
       - name: Start containers
         working-directory: ./e2edemo
