@@ -8,6 +8,9 @@ on:
 
 jobs:
   run-demo:
+    strategy:
+      matrix:
+        dst-chain: [hardhat, icon1]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -16,9 +19,16 @@ jobs:
         with:
           submodules: true
 
+      - name: Setup config for dst chain
+        working-directory: ./e2edemo
+        run: |
+          TMPFILE=$(mktemp -p .)
+          jq '.link.dst="${{ matrix.dst-chain }}"' chain_config.json > $TMPFILE
+          mv -f $TMPFILE chain_config.json
+
       - name: Start containers
-        working-directory: ./e2edemo/docker
-        run: docker compose up -d
+        working-directory: ./e2edemo
+        run: make start-nodes
 
       - name: Setup Go 1.18
         uses: actions/setup-go@v3
