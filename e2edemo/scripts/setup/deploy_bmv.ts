@@ -130,7 +130,7 @@ async function deploy_bmv(src: string, dst: string, srcChain: any, dstChain: any
         // deploy BMV-BTPBlock solidity for dst network
         const firstBlockHeader = await get_first_btpblock_header(srcNetwork, srcChain);
         const BMVBtp = await ethers.getContractFactory("BtpMessageVerifier");
-        const bmvBtp = await BMVBtp.deploy(dstChain.contracts.bmc, srcChain.network, srcChain.networkTypeId, firstBlockHeader, '0x0');
+        const bmvBtp = await BMVBtp.deploy(dstChain.contracts.bmc, srcChain.network, srcChain.networkTypeId, firstBlockHeader, '0x0', '0x0');
         await bmvBtp.deployed()
         dstChain.contracts.bmv = bmvBtp.address
         console.log(`${dst}: BMV: deployed to ${bmvBtp.address}`);
