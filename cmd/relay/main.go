@@ -129,7 +129,7 @@ func main() {
 	rootPFlags.String("dst_config", "", "raw json string or '@<json config file>' for destination chain")
 
 	//RelayConfig
-	rootPFlags.String("direction", "reverse", "relay network direction (both,front,reverse)")
+	rootPFlags.String("direction", "both", "relay network direction (both,front,reverse)")
 	rootPFlags.String("base_dir", "", "Base directory for data")
 	rootPFlags.String("log_level", "debug", "Global log level (trace,debug,info,warn,error,fatal,panic)")
 	rootPFlags.String("console_level", "trace", "Console log level (trace,debug,info,warn,error,fatal,panic)")
@@ -195,8 +195,6 @@ func main() {
 	rootCmd.AddCommand(startCmd)
 	startFlags := startCmd.Flags()
 	startFlags.StringToString("mod_level", nil, "Set console log level for specific module ('mod'='level',...)")
-	startFlags.String("cpuprofile", "", "CPU Profiling data file")
-	startFlags.String("memprofile", "", "Memory Profiling data file")
 	startFlags.MarkHidden("mod_level")
 
 	cli.BindPFlags(rootVc, startFlags)
