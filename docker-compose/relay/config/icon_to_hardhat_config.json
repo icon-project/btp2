@@ -1,0 +1,36 @@
+{
+  "relay_config": {
+    "direction": "both",
+    "base_dir": ".",
+    "log_level": "debug",
+    "console_level": "trace",
+    "log_forwarder": {
+      "vendor": "",
+      "address": "",
+      "level": "info",
+      "name": ""
+    },
+    "log_writer": {
+      "filename": "relay.log",
+      "maxsize": 100,
+      "maxage": 0,
+      "maxbackups": 0,
+      "localtime": false,
+      "compress": false
+    }
+  },
+  "chains_config": {
+    "src": {
+      "address": "btp://0x3.icon/cx24a7d0637203f2d8737c1d1cd02ef6599ae0c7ee",
+      "endpoint": "http://icon-node:9080/api/v3/icon_dex",
+      "key_store": "/keystore/icon/keystore.json",
+      "key_password": "gochain"
+    },
+    "dst": {
+      "address": "btp://0x539.hardhat/0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      "endpoint": "http://docker-ganache-1:8545",
+      "key_store": "/keystore/hardhat/keystore.json",
+      "key_password": "hardhat"
+    }
+  }
+}

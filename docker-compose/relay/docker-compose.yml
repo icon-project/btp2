@@ -14,5 +14,5 @@ services:
         source: ./keystore
         target: /keystore
     environment:
-      - RELAY_CONFIG=/etc/config/relay_config.json
+      - RELAY_CONFIG=/etc/config/icon_to_hardhat_config.json
     restart: always
