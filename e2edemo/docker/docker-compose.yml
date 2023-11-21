@@ -8,7 +8,7 @@ services:
       - ./hardhat/logs:/app/logs
     command: /bin/sh -c "/app/node_modules/.bin/hardhat --config hardhat.config.js node 2>&1 | tee /app/logs/hardhat.log"
   icon0:
-    image: iconloop/goloop-icon:v1.3.8
+    image: iconloop/goloop-icon:v1.3.13
     container_name: "icon-node0"
     environment:
       GOLOOP_LOG_LEVEL: "trace"
@@ -24,7 +24,7 @@ services:
       - ./icon/logs:/goloop/logs
     command: /bin/sh -c /goloop/config/start.sh
   icon1:
-    image: iconloop/goloop-icon:v1.3.8
+    image: iconloop/goloop-icon:v1.3.13
     container_name: "icon-node1"
     environment:
       GOLOOP_LOG_LEVEL: "trace"
