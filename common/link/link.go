@@ -146,6 +146,7 @@ func (l *Link) startReceiverChannel(errCh chan error) error {
 						}
 					}
 				case error:
+					l.l.Debugf("ReceiverChannel error : %+v", t)
 					errCh <- t
 				default:
 					errCh <- fmt.Errorf("illegal Receiver channel type")
@@ -167,6 +168,7 @@ func (l *Link) startSenderChannel(errCh chan error) error {
 			select {
 			case rc := <-rcc:
 				err := l.result(rc)
+				l.l.Debugf("SenderChannel error : %+v", err)
 				errCh <- err
 			}
 		}

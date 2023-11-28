@@ -85,7 +85,6 @@ func newLinkFactory(srcRaw, dstRaw json.RawMessage, relayCfg RelayConfig, modLev
 
 func (r *Relay) Start() error {
 	linkErrCh := make(chan error)
-
 	for _, lf := range r.lfs {
 		if err := start(lf.link, lf.sender, linkErrCh); err != nil {
 			return err
@@ -96,7 +95,7 @@ func (r *Relay) Start() error {
 		select {
 		case err := <-linkErrCh:
 			if err != nil {
-				fmt.Printf("Relay error : %+v", err)
+				log.GlobalLogger().Debugln("Relay error :", err)
 				return err
 			}
 		}
