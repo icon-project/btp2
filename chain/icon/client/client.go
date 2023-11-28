@@ -20,6 +20,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/icon-project/btp2/common/intconv"
 	"io"
 	"net/http"
 	"net/url"
@@ -34,7 +35,6 @@ import (
 	"github.com/icon-project/btp2/common"
 	"github.com/icon-project/btp2/common/crypto"
 	"github.com/icon-project/btp2/common/errors"
-	"github.com/icon-project/btp2/common/intconv"
 	"github.com/icon-project/btp2/common/jsonrpc"
 	"github.com/icon-project/btp2/common/log"
 	"github.com/icon-project/btp2/common/types"
@@ -43,7 +43,7 @@ import (
 const (
 	DefaultSendTransactionRetryInterval        = 3 * time.Second         //3sec
 	DefaultGetTransactionResultPollingInterval = 1500 * time.Millisecond //1.5sec
-	DefaultGetBtpMessageInterval               = time.Second             //1sec
+	DefaultGetBtpBlockInterval                 = time.Second             //2sec
 )
 
 var (
@@ -209,41 +209,32 @@ func (c *Client) GetBTPLinkOffset(src types.BtpAddress, dst types.BtpAddress) (o
 	return ret.Value()
 }
 
+func (c *Client) GetBTPMessage(height, nid int64) ([]string, error) {
+	pr := &BTPBlockParam{Height: HexInt(intconv.FormatInt(height)), NetworkId: HexInt(intconv.FormatInt(nid))}
+	return c.getBTPMessage(pr)
+}
+
 func (c *Client) GetBTPHeader(p *BTPBlockParam) (string, error) {
 	var header string
 	var retry = BlockRetryLimit
 	for {
 		if _, err := c.Do("btp_getHeader", p, &header); err != nil {
-			if errors.NotFoundError.Equals(err) {
-				if retry == 0 {
-					c.l.Error("Polling failed, retries exceeded")
-					return "", fmt.Errorf("Polling failed, retries exceeded")
-				}
-				retry--
-				<-time.After(time.Second)
-			}
-			return "", err
-		}
-		return header, nil
-	}
-}
-
-func (c *Client) GetBTPMessage(height, nid int64) ([]string, error) {
-	for {
-		pr := &BTPBlockParam{Height: HexInt(intconv.FormatInt(height)), NetworkId: HexInt(intconv.FormatInt(nid))}
-		mgs, err := c.getBTPMessage(pr)
-		if err != nil {
 			if je, ok := err.(*jsonrpc.Error); ok {
 				switch je.Code {
 				case JsonrpcErrorCodeNotFound:
-					<-time.After(DefaultGetBtpMessageInterval)
-					continue
+					if retry == 0 {
+						c.l.Error("Polling failed, retries exceeded")
+						return "", fmt.Errorf("polling failed, retries exceeded")
+					}
+					retry--
+					<-time.After(time.Second)
 				default:
-					return nil, err
+					return "", err
 				}
 			}
+		} else {
+			return header, nil
 		}
-		return mgs, nil
 	}
 }
 
@@ -252,17 +243,22 @@ func (c *Client) getBTPMessage(p *BTPBlockParam) ([]string, error) {
 	var retry = BlockRetryLimit
 	for {
 		if _, err := c.Do("btp_getMessages", p, &result); err != nil {
-			if errors.NotFoundError.Equals(err) {
-				if retry == 0 {
-					c.l.Error("Polling failed, retries exceeded")
-					return nil, fmt.Errorf("Polling failed, retries exceeded")
+			if je, ok := err.(*jsonrpc.Error); ok {
+				switch je.Code {
+				case JsonrpcErrorCodeNotFound:
+					if retry == 0 {
+						c.l.Error("Polling failed, retries exceeded")
+						return nil, fmt.Errorf("polling failed, retries exceeded")
+					}
+					retry--
+					<-time.After(time.Second)
+				default:
+					return nil, err
 				}
-				retry--
-				<-time.After(time.Second)
 			}
-			return nil, err
+		} else {
+			return result, nil
 		}
-		return result, nil
 	}
 }
 
@@ -271,17 +267,22 @@ func (c *Client) GetBTPProof(p *BTPBlockParam) (string, error) {
 	var retry = BlockRetryLimit
 	for {
 		if _, err := c.Do("btp_getProof", p, &result); err != nil {
-			if errors.NotFoundError.Equals(err) {
-				if retry == 0 {
-					c.l.Error("Polling failed, retries exceeded")
-					return "", fmt.Errorf("Polling failed, retries exceeded")
+			if je, ok := err.(*jsonrpc.Error); ok {
+				switch je.Code {
+				case JsonrpcErrorCodeNotFound:
+					if retry == 0 {
+						c.l.Error("Polling failed, retries exceeded")
+						return "", fmt.Errorf("polling failed, retries exceeded")
+					}
+					retry--
+					<-time.After(time.Second)
+				default:
+					return "", err
 				}
-				retry--
-				<-time.After(time.Second)
 			}
-			return "", err
+		} else {
+			return result, nil
 		}
-		return result, nil
 	}
 }
 
