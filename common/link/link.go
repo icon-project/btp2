@@ -13,7 +13,8 @@ import (
 type RelayState int
 
 const (
-	RUNNING = iota
+	INIT = iota
+	RUNNING
 	PENDING
 )
 
@@ -79,7 +80,7 @@ func NewLink(srcCfg ChainConfig, r Receiver, l log.Logger) types.Link {
 			size: 0,
 		},
 		blsChannel: make(chan *types.BMCLinkStatus),
-		relayState: RUNNING,
+		relayState: INIT,
 	}
 	link.rmi.rmis = append(link.rmi.rmis, make([]RelayMessageItem, 0))
 	return link
@@ -137,7 +138,6 @@ func (l *Link) startReceiverChannel(errCh chan error) error {
 						if err = l.handleRelayMessage(); err != nil {
 							errCh <- err
 						}
-						l.relayState = PENDING
 					})
 
 					if l.bls.Verifier.Height < rs.Height() {
@@ -283,13 +283,13 @@ func (l *Link) handleRelayMessage() error {
 	defer l.rmsMtx.Unlock()
 	l.l.Debugf("handleRelayMessage (relay status:%d)", l.relayState)
 
-	if l.relayState == RUNNING {
+	if l.relayState != PENDING {
 		if err := l.sendRelayMessage(); err != nil {
 			return err
 		}
 
-		for true {
-			if l.relayState == RUNNING &&
+		for {
+			if l.relayState != PENDING &&
 				len(l.rss) != 0 &&
 				l.bls.Verifier.Height < l.rss[len(l.rss)-1].Height() {
 				if err := l.buildRelayMessage(); err != nil {
@@ -300,6 +300,9 @@ func (l *Link) handleRelayMessage() error {
 					return err
 				}
 
+				if l.relayState == INIT {
+					l.relayState = PENDING
+				}
 			} else {
 				l.l.Debugf("Relay status : %d, ReceiveStatus size: %d", l.relayState, len(l.rss))
 				break
