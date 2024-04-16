@@ -364,7 +364,11 @@ func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
 	var mpLen int64
 	var seq int64
 	if bu != nil {
-		seq = l.getReceiveStatusForHeight(l.bls.Verifier.Height).Seq()
+		rs := l.getReceiveStatusForHeight(l.bls.Verifier.Height)
+		if rs == nil {
+			return 0, nil
+		}
+		seq = rs.Seq()
 	} else {
 		seq = l.rss[len(l.rss)-1].Seq()
 	}
