@@ -140,7 +140,7 @@ func (l *Link) startReceiverChannel(errCh chan error) error {
 						}
 					})
 
-					if l.bls.Verifier.Height < rs.Height() {
+					if l.bls.Verifier.Height < rs.Height() || l.bls.RxSeq < rs.Seq() {
 						if err = l.handleRelayMessage(); err != nil {
 							errCh <- err
 						}
@@ -168,8 +168,10 @@ func (l *Link) startSenderChannel(errCh chan error) error {
 			select {
 			case rc := <-rcc:
 				err := l.result(rc)
-				l.l.Debugf("SenderChannel error : %+v", err)
-				errCh <- err
+				if err != nil {
+					l.l.Debugf("SenderChannel error : %+v", err)
+					errCh <- err
+				}
 			}
 		}
 	}()
@@ -183,7 +185,7 @@ func (l *Link) buildRelayMessage() error {
 	}
 
 	//Get Block
-	bus, err := l.buildBlockUpdates(l.bls)
+	bus, err := l.buildBlockUpdates()
 	if err != nil {
 		return err
 	}
@@ -287,13 +289,23 @@ func (l *Link) handleRelayMessage() error {
 		if err := l.sendRelayMessage(); err != nil {
 			return err
 		}
-
 		for {
 			if l.relayState != PENDING &&
 				len(l.rss) != 0 &&
-				l.bls.Verifier.Height < l.rss[len(l.rss)-1].Height() {
-				if err := l.buildRelayMessage(); err != nil {
-					return err
+				(l.bls.Verifier.Height < l.rss[len(l.rss)-1].Height() ||
+					l.bls.RxSeq < l.rss[len(l.rss)-1].Seq()) {
+				if l.bls.Verifier.Height < l.rss[len(l.rss)-1].Height() {
+					if err := l.buildRelayMessage(); err != nil {
+						return err
+					}
+				} else if l.bls.RxSeq < l.rss[len(l.rss)-1].Seq() {
+					_, err := l.buildProof(nil)
+					if err != nil {
+						return err
+					}
+					if err = l.appendRelayMessage(); err != nil {
+						return err
+					}
 				}
 
 				if err := l.sendRelayMessage(); err != nil {
@@ -312,10 +324,10 @@ func (l *Link) handleRelayMessage() error {
 	return nil
 }
 
-func (l *Link) buildBlockUpdates(bs *types.BMCLinkStatus) ([]BlockUpdate, error) {
+func (l *Link) buildBlockUpdates() ([]BlockUpdate, error) {
 	l.l.Debugf("BuildBlockUpdates (bls height:%d, bls rxSeq:%d)", l.bls.Verifier.Height, l.bls.RxSeq)
 	for {
-		bus, err := l.r.BuildBlockUpdate(bs, l.limitSize-l.rmi.size)
+		bus, err := l.r.BuildBlockUpdate(l.bls, l.limitSize-l.rmi.size)
 		if err != nil {
 			return nil, err
 		}
@@ -331,7 +343,7 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 		return nil
 	}
 	for l.bls.RxSeq < rs.Seq() {
-		l.l.Debugf("HandleUndeliveredRelayMessage ReceiveStatus(height : %d, seq : %s), BMCLinkStatus(height : %d, seq : %s)",
+		l.l.Debugf("HandleUndeliveredRelayMessage ReceiveStatus(height : %d, seq : %d), BMCLinkStatus(height : %d, seq : %d)",
 			rs.Height(), rs.Seq(), l.bls.Verifier.Height, l.bls.RxSeq)
 		_, err := l.buildProof(nil)
 		if err != nil {
@@ -350,12 +362,15 @@ func (l *Link) handleUndeliveredRelayMessage() error {
 func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
 	l.l.Debugf("BuildProof (bls height:%d, bls rxSeq:%d)", l.bls.Verifier.Height, l.bls.RxSeq)
 	var mpLen int64
-	rs := l.getReceiveStatusForHeight(l.bls.Verifier.Height)
-	if rs == nil {
-		return 0, nil
+	var seq int64
+	if bu != nil {
+		seq = l.getReceiveStatusForHeight(l.bls.Verifier.Height).Seq()
+	} else {
+		seq = l.rss[len(l.rss)-1].Seq()
 	}
+
 	for {
-		if rs.Seq() <= l.bls.RxSeq {
+		if seq <= l.bls.RxSeq {
 			break
 		}
 
