@@ -366,11 +366,15 @@ func (l *Link) buildProof(bu BlockUpdate) (int64, error) {
 	if bu != nil {
 		rs := l.getReceiveStatusForHeight(l.bls.Verifier.Height)
 		if rs == nil {
-			return 0, nil
+			seq = l.rss[len(l.rss)-1].Seq()
+			l.l.Debugf("[ReceiveStatusForHeight is null]BuildProof ReceiveStatus (height : %d, seq : %d)", l.rss[len(l.rss)-1].Height(), l.rss[len(l.rss)-1].Seq())
+		} else {
+			seq = rs.Seq()
+			l.l.Debugf("[ReceiveStatusForHeight is not null]BuildProof ReceiveStatus (height : %d, seq : %d)", rs.Height(), rs.Seq())
 		}
-		seq = rs.Seq()
 	} else {
 		seq = l.rss[len(l.rss)-1].Seq()
+		l.l.Debugf("[BlockUpdate is null]BuildProof ReceiveStatus (height : %d, seq : %d)", l.rss[len(l.rss)-1].Height(), l.rss[len(l.rss)-1].Seq())
 	}
 
 	for {
